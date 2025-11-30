@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MBTI Avatar Farm
 
 A cognitive function-based personality simulation system where 16 MBTI personality types interact in structured conversations.
