@@ -1,23 +1,38 @@
+import { useEffect, useRef } from 'react';
 import type { Message, Avatar, MessageTag } from '../../types';
+import TypingIndicator from './TypingIndicator';
 
 interface ConversationTimelineProps {
   messages: Message[];
   avatars: Avatar[];
   currentMessageIndex?: number;
+  typingAvatarId?: string | null;
 }
 
 export default function ConversationTimeline({ 
   messages, 
   avatars,
-  currentMessageIndex 
+  currentMessageIndex,
+  typingAvatarId
 }: ConversationTimelineProps) {
-  if (messages.length === 0) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive or typing starts (live chat behavior)
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [messages.length, typingAvatarId]);
+
+  if (messages.length === 0 && !typingAvatarId) {
     return (
       <div className="text-center py-12 text-gray-500">
-        <p>No messages yet. Run a simulation to see the conversation.</p>
+        <p>No messages yet. Generating conversation...</p>
       </div>
     );
   }
+
+  const typingAvatar = typingAvatarId ? avatars.find(a => a.id === typingAvatarId) : null;
 
   return (
     <div className="space-y-4">
@@ -34,6 +49,14 @@ export default function ConversationTimeline({
           />
         );
       })}
+      
+      {/* Typing Indicator */}
+      {typingAvatar && (
+        <TypingIndicator avatar={typingAvatar} />
+      )}
+      
+      {/* Scroll anchor for auto-scrolling */}
+      <div ref={messagesEndRef} />
     </div>
   );
 }

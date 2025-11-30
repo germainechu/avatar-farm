@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 /**
  * Vercel Edge Function to generate LLM-powered messages for avatars
@@ -114,11 +116,14 @@ export default async function handler(
     }
 
     const data = await deepseekResponse.json();
-    const content = data.choices[0]?.message?.content || '';
+    let content = data.choices[0]?.message?.content || '';
 
     if (!content) {
       return res.status(500).json({ error: 'Empty response from API' });
     }
+
+    // Clean the content: strip unnecessary quotes and formatting
+    content = cleanResponseContent(content);
 
     // Determine message tag based on content and avatar behavior
     const tag = determineMessageTag(content, avatar);
@@ -140,7 +145,24 @@ export default async function handler(
 }
 
 /**
+ * Loads custom personality prompt from markdown file if available
+ */
+function loadPersonalityPrompt(mbtiType: string): string | null {
+  try {
+    // Try to read from personality-prompts folder
+    // In Vercel, the working directory is the project root
+    const promptPath = join(process.cwd(), 'personality-prompts', `${mbtiType}.md`);
+    const promptContent = readFileSync(promptPath, 'utf-8');
+    return promptContent;
+  } catch (error) {
+    // File doesn't exist or can't be read - that's okay, we'll use default prompt
+    return null;
+  }
+}
+
+/**
  * Builds a system prompt that encodes the avatar's MBTI personality
+ * Uses custom personality prompts if available, otherwise falls back to default
  */
 function buildSystemPrompt(
   avatar: GenerateMessageRequest['avatar'],
@@ -154,8 +176,21 @@ function buildSystemPrompt(
   const tertiary = avatar.functions.find(f => f.role === 'tertiary');
   const inferior = avatar.functions.find(f => f.role === 'inferior');
 
+  // Try to load custom personality prompt
+  const customPrompt = loadPersonalityPrompt(avatar.mbtiType);
+
   // Build conversation context with speaker names
-  const recentMessages = history.slice(-5);
+  // Use dynamic window size: more messages for later rounds to maintain context
+  // Start with 5 messages, increase to 8 for rounds 5+, and 10 for rounds 10+
+  const windowSize = round <= 4 ? 5 : round <= 9 ? 8 : 10;
+  const recentMessages = history.slice(-windowSize);
+  
+  // If we have more history than the window, add a brief summary of earlier conversation
+  const earlierMessages = history.slice(0, -windowSize);
+  const earlierSummary = earlierMessages.length > 0 
+    ? `\n[Earlier conversation summary: ${earlierMessages.length} previous messages discussing "${scenario.topic}"]`
+    : '';
+  
   const conversationContext = recentMessages.length > 0
     ? recentMessages
         .map(msg => {
@@ -163,9 +198,35 @@ function buildSystemPrompt(
           const speakerName = speaker?.name || speaker?.mbtiType || 'Unknown';
           return `[Round ${msg.round}] ${speakerName}: "${msg.content}"`;
         })
-        .join('\n')
+        .join('\n') + earlierSummary
     : '';
 
+  // If custom prompt exists, use it as the base and enhance with context
+  if (customPrompt) {
+    return `You are ${avatar.name}, an ${avatar.mbtiType} personality.
+
+PERSONALITY PROFILE:
+${customPrompt}
+
+CURRENT SITUATION:
+- You are participating in a ${scenario.style} discussion
+- The topic being discussed is: "${scenario.topic}"
+- This is round ${round} of ${scenario.rounds}
+- Your cognitive function stack: ${dominant?.code || 'N/A'} (dominant) → ${auxiliary?.code || 'N/A'} (auxiliary) → ${tertiary?.code || 'N/A'} (tertiary) → ${inferior?.code || 'N/A'} (inferior)
+
+${conversationContext ? `RECENT CONVERSATION (last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
+
+YOUR TASK:
+- Stay true to your ${avatar.mbtiType} personality as described above
+- Respond naturally to the topic "${scenario.topic}" from your personality's perspective
+- Engage authentically with the conversation context
+- Keep your response concise (1-3 sentences)
+- Let your communication style reflect your personality traits as described in the profile above
+- Reference specific points from the conversation when relevant
+- Avoid repeating points you or others have already made - build on the conversation or introduce new perspectives`;
+  }
+
+  // Fallback to default prompt if no custom prompt exists
   const prompt = `You are ${avatar.name}, an ${avatar.mbtiType} personality.
 
 CORE IDENTITY:
@@ -186,7 +247,7 @@ CURRENT CONTEXT:
 - Interaction Style: ${scenario.style}
 - Round: ${round} of ${scenario.rounds}
 
-${conversationContext ? `RECENT CONVERSATION (sliding window of last 5 messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
+${conversationContext ? `RECENT CONVERSATION (sliding window of last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
 
 YOUR ROLE:
 - Stay in character as ${avatar.name} (${avatar.mbtiType})
@@ -194,9 +255,43 @@ YOUR ROLE:
 - Engage with the recent conversation context when relevant
 - Keep responses concise (1-3 sentences)
 - Match your communication style parameters
-- Reference specific points from the conversation when relevant`;
+- Reference specific points from the conversation when relevant
+- Avoid repeating points you or others have already made - build on the conversation or introduce new perspectives`;
 
   return prompt;
+}
+
+/**
+ * Cleans response content by removing unnecessary quotes and formatting
+ * Strips surrounding quotes (single, double, or smart quotes) if they wrap the entire response
+ */
+function cleanResponseContent(content: string): string {
+  if (!content) return content;
+
+  let cleaned = content.trim();
+
+  // Check for surrounding quotes (double quotes, single quotes, or smart quotes)
+  // Pattern: starts and ends with matching quote marks
+  const quotePatterns = [
+    /^[""](.*)[""]$/s,  // Double quotes (regular and smart)
+    /^[''](.*)['']$/s,  // Single quotes (regular and smart)
+    /^"(.*)"$/s,        // Regular double quotes
+    /^'(.*)'$/s,        // Regular single quotes
+  ];
+
+  for (const pattern of quotePatterns) {
+    const match = cleaned.match(pattern);
+    if (match && match[1]) {
+      // Only strip if the content inside is substantial (not just empty or whitespace)
+      const innerContent = match[1].trim();
+      if (innerContent.length > 0) {
+        cleaned = innerContent;
+        break; // Only strip one layer of quotes
+      }
+    }
+  }
+
+  return cleaned.trim();
 }
 
 /**

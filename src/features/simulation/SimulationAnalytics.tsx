@@ -5,7 +5,10 @@ interface SimulationAnalyticsProps {
   avatars: Avatar[];
 }
 
-export default function SimulationAnalytics({ messages, avatars }: SimulationAnalyticsProps) {
+export default function SimulationAnalytics({ 
+  messages, 
+  avatars
+}: SimulationAnalyticsProps) {
   if (messages.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">

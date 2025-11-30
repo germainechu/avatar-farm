@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { Scenario, Avatar, Message } from '../../types';
-import { runSimulation } from '../../lib/simulationEngine';
+import type { Scenario, Avatar, Message, AvatarPosition } from '../../types';
+import { runSimulation, generatePositions } from '../../lib/simulationEngine';
 import ConversationTimeline from './ConversationTimeline';
 import SimulationControls from './SimulationControls';
 import SimulationAnalytics from './SimulationAnalytics';
+import FinalPositions from './FinalPositions';
 
 interface SimulationViewProps {
   scenario: Scenario;
@@ -19,31 +20,87 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [typingAvatarId, setTypingAvatarId] = useState<string | null>(null);
+  const [positions, setPositions] = useState<AvatarPosition[]>([]);
+  const [isGeneratingPositions, setIsGeneratingPositions] = useState(false);
 
   const participants = avatars.filter(a => scenario.avatarIds.includes(a.id));
   const messagesPerRound = participants.length;
   const currentRound = Math.floor(currentIndex / messagesPerRound) + 1;
 
-  // Generate all messages on mount (now async)
+  // Generate messages in real-time (live chat mode)
   useEffect(() => {
     let isCancelled = false;
 
     const generateMessages = async () => {
       setIsGenerating(true);
       setGenerationError(null);
+      setMessages([]); // Clear previous messages
+      setAllMessages([]); // Clear previous messages
+      setCurrentIndex(0);
+      setTypingAvatarId(null); // Clear typing indicator
+      setPositions([]); // Clear previous positions when regenerating messages
+      setIsGeneratingPositions(false); // Reset position generation state
+      
       try {
-        const generatedMessages = await runSimulation(scenario, avatars);
+        // Use callbacks to show messages and typing indicators (live chat feel)
+        const generatedMessages = await runSimulation(
+          scenario, 
+          avatars,
+          (message) => {
+            // Show message immediately when it arrives
+            if (!isCancelled) {
+              setMessages(prev => [...prev, message]);
+              setAllMessages(prev => [...prev, message]);
+              setCurrentIndex(prev => prev + 1);
+            }
+          },
+          (avatarId) => {
+            // Show typing indicator when avatar starts generating
+            if (!isCancelled) {
+              setTypingAvatarId(avatarId);
+            }
+          },
+          () => {
+            // Hide typing indicator when avatar finishes generating
+            if (!isCancelled) {
+              setTypingAvatarId(null);
+            }
+          }
+        );
+        
+        // Ensure all messages are stored even if callback missed any
         if (!isCancelled) {
           setAllMessages(generatedMessages);
+          
+          // Generate positions after simulation completes
+          setIsGeneratingPositions(true);
+          try {
+            const avatarPositions = await generatePositions(scenario, generatedMessages, avatars);
+            if (!isCancelled) {
+              setPositions(avatarPositions);
+            }
+          } catch (error) {
+            console.error('Error generating positions:', error);
+            // Don't show error to user, positions are optional
+          } finally {
+            if (!isCancelled) {
+              setIsGeneratingPositions(false);
+            }
+          }
         }
       } catch (error) {
         if (!isCancelled) {
           setGenerationError(error instanceof Error ? error.message : 'Failed to generate messages');
+          setTypingAvatarId(null); // Clear typing indicator on error
+          setPositions([]); // Clear positions on error
+          setIsGeneratingPositions(false); // Reset position generation state on error
           console.error('Error generating messages:', error);
         }
       } finally {
         if (!isCancelled) {
           setIsGenerating(false);
+          setTypingAvatarId(null); // Ensure typing indicator is cleared
         }
       }
     };
@@ -55,24 +112,9 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
     };
   }, [scenario, avatars]);
 
-  // Auto-play simulation
-  useEffect(() => {
-    if (isRunning && !isPaused && currentIndex < allMessages.length) {
-      const timer = setTimeout(() => {
-        setMessages(prev => [...prev, allMessages[currentIndex]]);
-        setCurrentIndex(prev => prev + 1);
-      }, 800); // 800ms delay between messages
-
-      return () => clearTimeout(timer);
-    } else if (currentIndex >= allMessages.length && isRunning) {
-      setIsRunning(false);
-    }
-  }, [isRunning, isPaused, currentIndex, allMessages]);
-
   const handleStart = () => {
-    if (currentIndex === 0) {
-      setMessages([]);
-    }
+    // Messages are already being generated and displayed in real-time
+    // This button can be used to restart if needed
     setIsRunning(true);
     setIsPaused(false);
   };
@@ -90,9 +132,16 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
     setIsPaused(false);
     setCurrentIndex(0);
     setMessages([]);
+    setAllMessages([]);
+    setTypingAvatarId(null);
+    setPositions([]);
+    setIsGeneratingPositions(false);
+    // Trigger regeneration by changing a dependency
+    // This will be handled by the useEffect above
   };
 
   const handleStep = () => {
+    // Step mode not needed in live chat mode, but keep for compatibility
     if (currentIndex < allMessages.length) {
       setMessages(prev => [...prev, allMessages[currentIndex]]);
       setCurrentIndex(prev => prev + 1);
@@ -165,26 +214,31 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
         />
       )}
 
-      {/* Main Content Grid */}
-      {!isGenerating && (
+      {/* Main Content */}
+      {!generationError && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Conversation Timeline - Takes 2 columns */}
-          <div className="lg:col-span-2">
-            <div className="bg-gray-50 rounded-lg p-6 max-h-[600px] overflow-y-auto">
+          {/* Left Column: Conversation and Final Positions */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Conversation Timeline */}
+            <div className="bg-gray-50 rounded-lg p-6 max-h-[600px] overflow-y-auto border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Conversation</h3>
-              {allMessages.length === 0 && !generationError ? (
-                <p className="text-gray-500 text-center py-8">No messages generated yet.</p>
-              ) : (
-                <ConversationTimeline
-                  messages={messages}
-                  avatars={avatars}
-                  currentMessageIndex={messages.length - 1}
-                />
-              )}
+              <ConversationTimeline
+                messages={messages}
+                avatars={avatars}
+                currentMessageIndex={messages.length - 1}
+                typingAvatarId={typingAvatarId}
+              />
             </div>
+
+            {/* Final Positions - Directly below chat, clearly separated */}
+            <FinalPositions
+              positions={positions}
+              avatars={participants}
+              isGenerating={isGeneratingPositions}
+            />
           </div>
 
-          {/* Analytics - Takes 1 column */}
+          {/* Right Column: Analytics Dashboard */}
           <div className="lg:col-span-1">
             <SimulationAnalytics
               messages={messages}

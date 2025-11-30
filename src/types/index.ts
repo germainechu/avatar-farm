@@ -55,6 +55,13 @@ export interface Message {
   createdAt: string;
 }
 
+// Avatar Position (concluding statement)
+export interface AvatarPosition {
+  avatarId: string;
+  content: string;
+  round: number; // The round number this position is based on
+}
+
 // Simulation State
 export interface SimulationState {
   scenario: Scenario;

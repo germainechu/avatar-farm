@@ -36,7 +36,7 @@ export default function TypingIndicator({ avatar }: TypingIndicatorProps) {
       {/* Typing Animation */}
       <div className="pl-15">
         <div className="flex items-center gap-1">
-          <span className="text-gray-500 italic">is typing</span>
+          <span className="text-gray-500 italic">is thinking</span>
           <div className="flex gap-1.5 ml-2">
             <div className="typing-dot w-2 h-2 bg-gray-400 rounded-full"></div>
             <div className="typing-dot w-2 h-2 bg-gray-400 rounded-full"></div>
