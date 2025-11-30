@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/generate-message.ts": {
+      "runtime": "@vercel/node"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+# Cursor Rules for Avatar Farm Project
+
+## File Naming Convention for .progress Directory
+
+**IMPORTANT:** When creating new markdown (.md) files in the `.progress/` directory that are information-based documentation:
+
+1. **Always number them sequentially** with a numeric prefix (e.g., `1_`, `2_`, `3_`, etc.)
+2. **Determine the next number** by checking existing files in `.progress/` and using the next available sequential number
+3. **Format:** `{N}_{FILENAME}.md` where N is the sequential number
+
+### Example:
+- If the highest numbered file is `5_COMMUNICATION_ARCHITECTURE.md`, the next file should be `6_NEW_FILE.md`
+
+### Current Numbered Files (as of last update):
+- `1_IMPLEMENTATION_SUMMARY.md`
+- `2_QUICK_START.md`
+- `3_LLM_BACKEND_ANALYSIS.md`
+- `4_SETUP_GUIDE.md`
+- `5_COMMUNICATION_ARCHITECTURE.md`
+- `6_LLM_INTEGRATION_COMPLETE.md`
+
+**Before creating any new .md file in `.progress/`, check the existing numbered files and use the next sequential number.**
