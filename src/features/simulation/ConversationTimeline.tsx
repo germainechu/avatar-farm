@@ -175,16 +175,29 @@ function MessageBubble({ message, avatar, isCurrent, isUserMessage = false }: Me
         <p className="text-gray-700 leading-relaxed">{formatMarkdown(message.content)}</p>
       </div>
 
-      {/* Function Indicators */}
+      {/* Function Indicators - Show all 4 functions */}
       <div className="flex gap-1.5 mt-3 pl-15">
-        {avatar.functions.slice(0, 2).map((func, index) => (
-          <span 
-            key={index}
-            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
-          >
-            {func.code}
-          </span>
-        ))}
+        {avatar.functions.map((func, index) => {
+          const isActive = message.activeFunctions?.includes(func.code) || false;
+          const roleColors: Record<string, string> = {
+            dominant: isActive ? 'bg-purple-500 text-white ring-2 ring-purple-300' : 'bg-purple-100 text-purple-800',
+            auxiliary: isActive ? 'bg-indigo-500 text-white ring-2 ring-indigo-300' : 'bg-indigo-100 text-indigo-800',
+            tertiary: isActive ? 'bg-blue-500 text-white ring-2 ring-blue-300' : 'bg-blue-100 text-blue-800',
+            inferior: isActive ? 'bg-gray-500 text-white ring-2 ring-gray-300' : 'bg-gray-100 text-gray-700',
+          };
+          
+          return (
+            <span 
+              key={index}
+              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-all ${
+                roleColors[func.role] || 'bg-gray-100 text-gray-700'
+              } ${isActive ? 'font-bold shadow-sm' : ''}`}
+              title={`${func.code} (${func.role})${isActive ? ' - Active' : ''}`}
+            >
+              {func.code}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

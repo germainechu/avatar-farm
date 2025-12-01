@@ -39,18 +39,28 @@ export default function AvatarCard({ avatar, onClick, isSelected = false }: Avat
         {avatar.name}
       </h3>
 
-      {/* Cognitive Functions */}
+      {/* Cognitive Functions - Show all 4 */}
       <div className="flex flex-wrap gap-1.5 mb-3">
-        {dominant && (
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
-            {dominant.code}
-          </span>
-        )}
-        {auxiliary && (
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-            {auxiliary.code}
-          </span>
-        )}
+        {avatar.functions.map((func, index) => {
+          const roleColors: Record<string, string> = {
+            dominant: 'bg-purple-100 text-purple-800',
+            auxiliary: 'bg-indigo-100 text-indigo-800',
+            tertiary: 'bg-blue-100 text-blue-800',
+            inferior: 'bg-gray-100 text-gray-700',
+          };
+          
+          return (
+            <span 
+              key={index}
+              className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                roleColors[func.role] || 'bg-gray-100 text-gray-700'
+              }`}
+              title={`${func.code} (${func.role})`}
+            >
+              {func.code}
+            </span>
+          );
+        })}
       </div>
 
       {/* Behavior Indicators */}

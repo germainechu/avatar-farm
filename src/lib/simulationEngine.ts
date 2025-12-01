@@ -1,4 +1,4 @@
-import type { Avatar, Scenario, Message, AvatarPosition } from '../types';
+import type { Avatar, Scenario, Message, AvatarPosition, CognitiveFunction } from '../types';
 
 /**
  * Delay between messages appearing (in milliseconds)
@@ -20,6 +20,61 @@ interface MessageContext {
   history: Message[];
   round: number;
   avatars?: Avatar[]; // Needed for speaker identification in conversation context
+}
+
+/**
+ * Analyzes which cognitive functions are active in a message
+ */
+async function analyzeCognitiveFunctions(
+  message: Message,
+  avatar: Avatar,
+  scenario: Scenario
+): Promise<CognitiveFunction[]> {
+  try {
+    const apiUrl = '/api/analyze-cognitive-functions';
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: {
+          id: message.id,
+          avatarId: message.avatarId,
+          content: message.content,
+          tag: message.tag,
+          round: message.round,
+        },
+        avatar: {
+          id: avatar.id,
+          mbtiType: avatar.mbtiType,
+          name: avatar.name,
+          functions: avatar.functions,
+        },
+        scenario: {
+          topic: scenario.topic,
+          style: scenario.style,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('Cognitive function analysis failed, using fallback');
+      // Fallback to dominant and auxiliary
+      const dominant = avatar.functions.find(f => f.role === 'dominant');
+      const auxiliary = avatar.functions.find(f => f.role === 'auxiliary');
+      return [dominant?.code, auxiliary?.code].filter(Boolean) as CognitiveFunction[];
+    }
+
+    const data = await response.json();
+    return (data.activeFunctions || []) as CognitiveFunction[];
+  } catch (error) {
+    console.warn('Error analyzing cognitive functions:', error);
+    // Fallback to dominant and auxiliary
+    const dominant = avatar.functions.find(f => f.role === 'dominant');
+    const auxiliary = avatar.functions.find(f => f.role === 'auxiliary');
+    return [dominant?.code, auxiliary?.code].filter(Boolean) as CognitiveFunction[];
+  }
 }
 
 /**
@@ -77,7 +132,7 @@ async function generateLLMMessage(
     throw new Error(data.error);
   }
 
-  return {
+  const message: Message = {
     id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     scenarioId: scenario.id,
     avatarId: avatar.id,
@@ -86,6 +141,12 @@ async function generateLLMMessage(
     tag: data.tag || 'support',
     createdAt: new Date().toISOString()
   };
+
+  // Analyze cognitive functions used in this message
+  const activeFunctions = await analyzeCognitiveFunctions(message, avatar, scenario);
+  message.activeFunctions = activeFunctions;
+
+  return message;
 }
 
 /**

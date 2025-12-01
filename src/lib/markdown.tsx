@@ -16,6 +16,7 @@ export function formatMarkdown(text: string): React.ReactNode[] {
 
   // Regex to match markdown patterns (bold italic first, then bold, then italic)
   // Using non-greedy matching and ensuring content is not empty
+  // Important: Process longer patterns first to avoid partial matches
   const patterns = [
     { regex: /\*\*\*([^*]+?)\*\*\*/g, style: { fontWeight: 'bold', fontStyle: 'italic' } },
     { regex: /___([^_]+?)___/g, style: { fontWeight: 'bold', fontStyle: 'italic' } },
@@ -34,25 +35,42 @@ export function formatMarkdown(text: string): React.ReactNode[] {
   }> = [];
 
   for (const pattern of patterns) {
+    // Create a fresh regex for each pattern to avoid state issues
+    // Use matchAll for cleaner iteration (if available) or ensure proper state management
     const regex = new RegExp(pattern.regex.source, 'g');
     let match;
+    // Reset regex lastIndex to ensure we search from the beginning each time
+    regex.lastIndex = 0;
     while ((match = regex.exec(text)) !== null) {
-      // Only add if content is not empty
-      if (match[1].trim().length > 0) {
+      // Only add if content is not empty (after trimming)
+      const content = match[1]?.trim() || '';
+      if (content.length > 0 && match.index !== undefined) {
         matches.push({
           start: match.index,
           end: match.index + match[0].length,
-          content: match[1],
+          content: content,
           style: pattern.style,
         });
+      }
+      // Prevent infinite loop if regex doesn't advance
+      if (match.index === regex.lastIndex) {
+        regex.lastIndex++;
       }
     }
   }
 
-  // Sort matches by start position
-  matches.sort((a, b) => a.start - b.start);
+  // Remove overlapping matches (keep the longer/more specific one)
+  // Sort by length (descending) first, then by start position, so longer matches are processed first
+  // This ensures that ***text*** and **text** are matched before *text*
+  matches.sort((a, b) => {
+    const aLength = a.end - a.start;
+    const bLength = b.end - b.start;
+    if (bLength !== aLength) {
+      return bLength - aLength; // Longer matches first
+    }
+    return a.start - b.start; // Then by position
+  });
 
-  // Remove overlapping matches (keep the first/longer one)
   const nonOverlappingMatches: typeof matches = [];
   for (const match of matches) {
     const overlaps = nonOverlappingMatches.some(

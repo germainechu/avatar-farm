@@ -53,6 +53,7 @@ export interface Message {
   content: string;
   tag: MessageTag;
   createdAt: string;
+  activeFunctions?: CognitiveFunction[]; // Cognitive functions actively used in this message
 }
 
 // Avatar Position (concluding statement)

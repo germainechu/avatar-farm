@@ -3,6 +3,10 @@
     "api/generate-message.ts": {
       "memory": 1024,
       "maxDuration": 30
+    },
+    "api/analyze-cognitive-functions.ts": {
+      "memory": 1024,
+      "maxDuration": 30
     }
   }
 }
