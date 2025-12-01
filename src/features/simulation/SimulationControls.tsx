@@ -23,22 +23,22 @@ export default function SimulationControls({
 }: SimulationControlsProps) {
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         {/* Progress Info */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-gray-700 mb-1">
             Progress: Round {currentRound} of {totalRounds}
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-blue-600 h-2 rounded-full transition-all"
-              style={{ width: `${(currentRound / totalRounds) * 100}%` }}
+              style={{ width: `${Math.min((currentRound / totalRounds) * 100, 100)}%` }}
             />
           </div>
         </div>
 
         {/* Control Buttons */}
-        <div className="flex gap-2 ml-6">
+        <div className="flex gap-2 flex-shrink-0">
           {!isRunning ? (
             <button
               onClick={onStart}

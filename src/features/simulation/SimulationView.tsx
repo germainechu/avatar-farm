@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import type { Scenario, Avatar, Message, AvatarPosition } from '../../types';
-import { runSimulation, generatePositions } from '../../lib/simulationEngine';
+import { runSimulation, generatePositions, continueSimulation, interjectAndContinue } from '../../lib/simulationEngine';
 import ConversationTimeline from './ConversationTimeline';
 import SimulationControls from './SimulationControls';
 import SimulationAnalytics from './SimulationAnalytics';
-import FinalPositions from './FinalPositions';
+import PerspectiveDiagram from './PerspectiveDiagram';
+import UserInterjection from './UserInterjection';
 
 interface SimulationViewProps {
   scenario: Scenario;
@@ -23,6 +24,7 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
   const [typingAvatarId, setTypingAvatarId] = useState<string | null>(null);
   const [positions, setPositions] = useState<AvatarPosition[]>([]);
   const [isGeneratingPositions, setIsGeneratingPositions] = useState(false);
+  const [totalRounds, setTotalRounds] = useState(scenario.rounds);
 
   const participants = avatars.filter(a => scenario.avatarIds.includes(a.id));
   const messagesPerRound = participants.length;
@@ -41,6 +43,7 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
       setTypingAvatarId(null); // Clear typing indicator
       setPositions([]); // Clear previous positions when regenerating messages
       setIsGeneratingPositions(false); // Reset position generation state
+      setTotalRounds(scenario.rounds); // Reset to original rounds
       
       try {
         // Use callbacks to show messages and typing indicators (live chat feel)
@@ -148,6 +151,141 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
     }
   };
 
+  const handleExtendConversation = async () => {
+    if (allMessages.length === 0) return;
+
+    setIsGenerating(true);
+    setGenerationError(null);
+    setTypingAvatarId(null);
+
+    try {
+      // Continue from existing messages
+      const additionalRounds = 5; // Add 5 more rounds
+      const extendedScenario = {
+        ...scenario,
+        rounds: totalRounds + additionalRounds,
+      };
+      
+      // Update total rounds state
+      setTotalRounds(totalRounds + additionalRounds);
+
+      const newMessages = await continueSimulation(
+        extendedScenario,
+        allMessages,
+        avatars,
+        (message) => {
+          setMessages(prev => [...prev, message]);
+          setAllMessages(prev => [...prev, message]);
+        },
+        (avatarId) => {
+          setTypingAvatarId(avatarId);
+        },
+        () => {
+          setTypingAvatarId(null);
+        }
+      );
+
+      // Regenerate positions with all messages (existing + new)
+      setIsGeneratingPositions(true);
+      try {
+        const allMessagesWithNew = [...allMessages, ...newMessages];
+        const avatarPositions = await generatePositions(extendedScenario, allMessagesWithNew, avatars);
+        setPositions(avatarPositions);
+      } catch (error) {
+        console.error('Error regenerating positions:', error);
+      } finally {
+        setIsGeneratingPositions(false);
+      }
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : 'Failed to extend conversation');
+      console.error('Error extending conversation:', error);
+    } finally {
+      setIsGenerating(false);
+      setTypingAvatarId(null);
+    }
+  };
+
+  const handleUserInterjection = async (userMessage: string) => {
+    if (!userMessage.trim() || isGenerating) return;
+
+    setIsGenerating(true);
+    setGenerationError(null);
+    setTypingAvatarId(null);
+
+    try {
+      // Calculate next round number
+      const lastRound = allMessages.length > 0 
+        ? Math.max(...allMessages.map(m => m.round))
+        : 0;
+      const nextRound = lastRound + 1;
+
+      // Create user message
+      const userMessageObj: Message = {
+        id: `user-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        scenarioId: scenario.id,
+        avatarId: 'user',
+        round: nextRound,
+        content: userMessage,
+        tag: 'idea', // Default tag for user messages
+        createdAt: new Date().toISOString(),
+      };
+
+      // Add user message to conversation
+      const messagesWithUser = [...allMessages, userMessageObj];
+      setMessages(prev => [...prev, userMessageObj]);
+      setAllMessages(messagesWithUser);
+      
+      // Update currentIndex to reflect the user message being added
+      setCurrentIndex(messagesWithUser.length);
+
+      // Continue simulation with avatars responding to user interjection
+      // Add 5 rounds after user interjection
+      const additionalRounds = 5;
+      const extendedScenario = {
+        ...scenario,
+        rounds: totalRounds + additionalRounds,
+      };
+      
+      // Update total rounds state (this will reset the progress bar calculation)
+      setTotalRounds(totalRounds + additionalRounds);
+
+      const newMessages = await interjectAndContinue(
+        extendedScenario,
+        messagesWithUser,
+        avatars,
+        (message) => {
+          setMessages(prev => [...prev, message]);
+          setAllMessages(prev => [...prev, message]);
+          setCurrentIndex(prev => prev + 1); // Update progress as messages arrive
+        },
+        (avatarId) => {
+          setTypingAvatarId(avatarId);
+        },
+        () => {
+          setTypingAvatarId(null);
+        }
+      );
+
+      // Regenerate positions with all messages (including user interjection)
+      setIsGeneratingPositions(true);
+      try {
+        const allMessagesWithNew = [...messagesWithUser, ...newMessages];
+        const avatarPositions = await generatePositions(extendedScenario, allMessagesWithNew, avatars);
+        setPositions(avatarPositions);
+      } catch (error) {
+        console.error('Error regenerating positions:', error);
+      } finally {
+        setIsGeneratingPositions(false);
+      }
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : 'Failed to process interjection');
+      console.error('Error processing user interjection:', error);
+    } finally {
+      setIsGenerating(false);
+      setTypingAvatarId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -205,7 +343,7 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
           isRunning={isRunning}
           isPaused={isPaused}
           currentRound={currentRound}
-          totalRounds={scenario.rounds}
+          totalRounds={totalRounds}
           onStart={handleStart}
           onPause={handlePause}
           onResume={handleResume}
@@ -230,12 +368,36 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
               />
             </div>
 
-            {/* Final Positions - Directly below chat, clearly separated */}
-            <FinalPositions
+            {/* User Interjection */}
+            {!isGenerating && allMessages.length > 0 && (
+              <UserInterjection
+                onInterject={handleUserInterjection}
+                isGenerating={isGenerating}
+                disabled={isGenerating}
+              />
+            )}
+
+            {/* Perspective Diagram - Shows individual perspectives and common ground */}
+            <PerspectiveDiagram
               positions={positions}
+              messages={allMessages}
               avatars={participants}
+              scenario={scenario}
               isGenerating={isGeneratingPositions}
             />
+
+            {/* Extend Conversation Button */}
+            {!isGenerating && allMessages.length > 0 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={handleExtendConversation}
+                  disabled={isGenerating}
+                  className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  + Add 5 More Rounds
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Analytics Dashboard */}

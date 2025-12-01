@@ -1,4 +1,5 @@
 import type { Avatar, AvatarPosition } from '../../types';
+import { formatMarkdown } from '../../lib/markdown';
 
 interface FinalPositionsProps {
   positions: AvatarPosition[];
@@ -69,7 +70,7 @@ export default function FinalPositions({
                   {/* Position Content */}
                   <div className="pl-16">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      {position.content}
+                      {formatMarkdown(position.content)}
                     </p>
                   </div>
                 </div>

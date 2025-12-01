@@ -191,15 +191,46 @@ function buildSystemPrompt(
     ? `\n[Earlier conversation summary: ${earlierMessages.length} previous messages discussing "${scenario.topic}"]`
     : '';
   
+  // Check if there's a user interjection in recent messages
+  const userInterjection = recentMessages.find(msg => msg.avatarId === 'user');
+  const hasUserInterjection = !!userInterjection;
+
   const conversationContext = recentMessages.length > 0
     ? recentMessages
         .map(msg => {
+          if (msg.avatarId === 'user') {
+            return `[Round ${msg.round}] USER INTERJECTION: "${msg.content}"`;
+          }
           const speaker = avatars.find(a => a.id === msg.avatarId);
           const speakerName = speaker?.name || speaker?.mbtiType || 'Unknown';
           return `[Round ${msg.round}] ${speakerName}: "${msg.content}"`;
         })
         .join('\n') + earlierSummary
     : '';
+
+  // Build interaction style guidance
+  let interactionGuidance = '';
+  if (scenario.style === 'debate') {
+    interactionGuidance = `DEBATE MODE - Your approach:
+- Actively engage with others' claims by either refuting or supporting them based on your cognitive functions and values
+- ${dominant?.code === 'Ti' || dominant?.code === 'Te' ? 'Use your logical framework (' + dominant.code + ') to challenge inconsistencies or support sound reasoning' : ''}
+- ${dominant?.code === 'Fi' || dominant?.code === 'Fe' ? 'Evaluate claims through your value system (' + dominant.code + ') - support what aligns with your values, challenge what conflicts' : ''}
+- ${dominant?.code === 'Ni' || dominant?.code === 'Ne' ? 'Use your intuitive insights (' + dominant.code + ') to question assumptions or highlight overlooked possibilities' : ''}
+- ${dominant?.code === 'Si' || dominant?.code === 'Se' ? 'Ground your responses in concrete evidence (' + dominant.code + ') - challenge abstract claims or support practical points' : ''}
+- Do NOT force collaboration or consensus - it's a debate, so take clear positions
+- Reference specific claims from others and respond directly to them
+- Build on or challenge previous points rather than simply agreeing`;
+  } else if (scenario.style === 'brainstorm') {
+    interactionGuidance = `BRAINSTORM MODE - Your approach:
+- Generate and build upon creative ideas
+- Explore possibilities and alternatives
+- Build on others' ideas or introduce new angles`;
+  } else if (scenario.style === 'cooperative') {
+    interactionGuidance = `COOPERATIVE MODE - Your approach:
+- Work together toward consensus
+- Find common ground and build on shared understanding
+- Support collaborative problem-solving`;
+  }
 
   // If custom prompt exists, use it as the base and enhance with context
   if (customPrompt) {
@@ -216,6 +247,15 @@ CURRENT SITUATION:
 
 ${conversationContext ? `RECENT CONVERSATION (last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
 
+${hasUserInterjection ? `IMPORTANT: There is a USER INTERJECTION in the recent conversation. The user has shared their perspective, asked a question, or guided the discussion. You should:
+- Acknowledge and respond to the user's interjection directly
+- Engage with their perspective from your ${avatar.mbtiType} personality's viewpoint
+- Use your cognitive functions to evaluate, support, or challenge their input as appropriate
+- Continue the conversation naturally after addressing their interjection
+` : ''}
+
+${interactionGuidance}
+
 YOUR TASK:
 - Stay true to your ${avatar.mbtiType} personality as described above
 - Respond naturally to the topic "${scenario.topic}" from your personality's perspective
@@ -223,7 +263,8 @@ YOUR TASK:
 - Keep your response concise (1-3 sentences)
 - Let your communication style reflect your personality traits as described in the profile above
 - Reference specific points from the conversation when relevant
-- Avoid repeating points you or others have already made - build on the conversation or introduce new perspectives`;
+- Avoid repeating points you or others have already made - build on the conversation or introduce new perspectives
+- While staying true to your core values and cognitive functions, vary your expression and approach to avoid sounding repetitive`;
   }
 
   // Fallback to default prompt if no custom prompt exists
@@ -249,6 +290,15 @@ CURRENT CONTEXT:
 
 ${conversationContext ? `RECENT CONVERSATION (sliding window of last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
 
+${hasUserInterjection ? `IMPORTANT: There is a USER INTERJECTION in the recent conversation. The user has shared their perspective, asked a question, or guided the discussion. You should:
+- Acknowledge and respond to the user's interjection directly
+- Engage with their perspective from your ${avatar.mbtiType} personality's viewpoint
+- Use your cognitive functions to evaluate, support, or challenge their input as appropriate
+- Continue the conversation naturally after addressing their interjection
+` : ''}
+
+${interactionGuidance}
+
 YOUR ROLE:
 - Stay in character as ${avatar.name} (${avatar.mbtiType})
 - Respond to the question "${scenario.topic}" from your personality's perspective
@@ -256,7 +306,8 @@ YOUR ROLE:
 - Keep responses concise (1-3 sentences)
 - Match your communication style parameters
 - Reference specific points from the conversation when relevant
-- Avoid repeating points you or others have already made - build on the conversation or introduce new perspectives`;
+- Avoid repeating points you or others have already made - build on the conversation or introduce new perspectives
+- While staying true to your core values and cognitive functions, vary your expression and approach to avoid sounding repetitive`;
 
   return prompt;
 }

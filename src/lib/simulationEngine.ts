@@ -160,6 +160,159 @@ export async function runSimulation(
 }
 
 /**
+ * Continues a simulation from existing messages
+ * Adds additional rounds to an ongoing conversation
+ * 
+ * @param scenario - The scenario (with updated rounds count)
+ * @param existingMessages - Messages from the previous simulation
+ * @param avatars - All avatars
+ * @param onMessage - Optional callback that fires as each message is generated
+ * @param onTypingStart - Optional callback that fires when an avatar starts generating
+ * @param onTypingEnd - Optional callback that fires when an avatar finishes generating
+ * @returns Array of new messages generated
+ */
+export async function continueSimulation(
+  scenario: Scenario,
+  existingMessages: Message[],
+  avatars: Avatar[],
+  onMessage?: (message: Message) => void,
+  onTypingStart?: (avatarId: string) => void,
+  onTypingEnd?: (avatarId: string) => void
+): Promise<Message[]> {
+  const participants = avatars.filter(a => scenario.avatarIds.includes(a.id));
+
+  if (participants.length === 0) {
+    throw new Error('No valid participants for simulation');
+  }
+
+  // Calculate the starting round (next round after existing messages)
+  const lastRound = existingMessages.length > 0 
+    ? Math.max(...existingMessages.map(m => m.round))
+    : 0;
+  const startRound = lastRound + 1;
+  const endRound = scenario.rounds;
+
+  const newMessages: Message[] = [];
+  const allMessages = [...existingMessages]; // Include existing for context
+
+  // Continue round-robin turn taking
+  for (let round = startRound; round <= endRound; round++) {
+    for (const avatar of participants) {
+      // Notify that this avatar is starting to generate
+      if (onTypingStart) {
+        onTypingStart(avatar.id);
+      }
+
+      const message = await generateMessage({
+        avatar,
+        scenario,
+        history: allMessages, // Use all messages (existing + new) for context
+        round,
+        avatars
+      });
+      
+      newMessages.push(message);
+      allMessages.push(message); // Add to all messages for next iteration's context
+      
+      // Notify that this avatar finished generating
+      if (onTypingEnd) {
+        onTypingEnd(avatar.id);
+      }
+      
+      // Fire callback immediately when message is generated
+      if (onMessage) {
+        onMessage(message);
+      }
+
+      // Add delay after message appears
+      const isLastMessage = round === endRound && avatar === participants[participants.length - 1];
+      if (!isLastMessage) {
+        await new Promise(resolve => setTimeout(resolve, MESSAGE_DISPLAY_DELAY_MS));
+      }
+    }
+  }
+
+  return newMessages;
+}
+
+/**
+ * Continues simulation after a user interjection
+ * Avatars will respond to the user's input and continue the conversation
+ * 
+ * @param scenario - The scenario (with updated rounds count)
+ * @param existingMessages - Messages including the user interjection
+ * @param avatars - All avatars
+ * @param onMessage - Optional callback that fires as each message is generated
+ * @param onTypingStart - Optional callback that fires when an avatar starts generating
+ * @param onTypingEnd - Optional callback that fires when an avatar finishes generating
+ * @returns Array of new messages generated
+ */
+export async function interjectAndContinue(
+  scenario: Scenario,
+  existingMessages: Message[],
+  avatars: Avatar[],
+  onMessage?: (message: Message) => void,
+  onTypingStart?: (avatarId: string) => void,
+  onTypingEnd?: (avatarId: string) => void
+): Promise<Message[]> {
+  const participants = avatars.filter(a => scenario.avatarIds.includes(a.id));
+
+  if (participants.length === 0) {
+    throw new Error('No valid participants for simulation');
+  }
+
+  // Find the user interjection (last message with avatarId === 'user')
+  const userMessage = existingMessages.filter(m => m.avatarId === 'user').pop();
+  const userInterjectionRound = userMessage?.round || 0;
+
+  // Calculate the starting round (next round after user interjection)
+  const startRound = userInterjectionRound + 1;
+  const endRound = scenario.rounds;
+
+  const newMessages: Message[] = [];
+  const allMessages = [...existingMessages]; // Include existing for context
+
+  // Continue round-robin turn taking, with avatars responding to user interjection
+  for (let round = startRound; round <= endRound; round++) {
+    for (const avatar of participants) {
+      // Notify that this avatar is starting to generate
+      if (onTypingStart) {
+        onTypingStart(avatar.id);
+      }
+
+      const message = await generateMessage({
+        avatar,
+        scenario,
+        history: allMessages, // Use all messages (including user interjection) for context
+        round,
+        avatars
+      });
+      
+      newMessages.push(message);
+      allMessages.push(message); // Add to all messages for next iteration's context
+      
+      // Notify that this avatar finished generating
+      if (onTypingEnd) {
+        onTypingEnd(avatar.id);
+      }
+      
+      // Fire callback immediately when message is generated
+      if (onMessage) {
+        onMessage(message);
+      }
+
+      // Add delay after message appears
+      const isLastMessage = round === endRound && avatar === participants[participants.length - 1];
+      if (!isLastMessage) {
+        await new Promise(resolve => setTimeout(resolve, MESSAGE_DISPLAY_DELAY_MS));
+      }
+    }
+  }
+
+  return newMessages;
+}
+
+/**
  * Generates a concluding position for an avatar based on the full conversation
  */
 async function generateAvatarPosition(
