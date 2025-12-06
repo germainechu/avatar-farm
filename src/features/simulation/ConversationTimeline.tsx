@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Message, Avatar, MessageTag } from '../../types';
 import TypingIndicator from './TypingIndicator';
 import { formatMarkdown } from '../../lib/markdown';
@@ -17,13 +17,95 @@ export default function ConversationTimeline({
   typingAvatarId
 }: ConversationTimelineProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showNewMessagesAlert, setShowNewMessagesAlert] = useState(false);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // Auto-scroll to bottom when new messages arrive or typing starts (live chat behavior)
+  // Find the scrollable parent container
+  const findScrollableParent = useCallback((element: HTMLElement | null): HTMLElement | null => {
+    if (!element) return null;
+    let parent = element.parentElement;
+    while (parent) {
+      const style = window.getComputedStyle(parent);
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll' || 
+          style.overflow === 'auto' || style.overflow === 'scroll') {
+        return parent;
+      }
+      parent = parent.parentElement;
+    }
+    return null;
+  }, []);
+
+  // Check if user is near the bottom of the scroll container
+  const checkIfAtBottom = useCallback(() => {
+    const element = messagesEndRef.current;
+    if (!element) return true;
+
+    const scrollableParent = findScrollableParent(element);
+    if (!scrollableParent) return true;
+
+    const threshold = 100; // pixels from bottom
+    const isNearBottom = 
+      scrollableParent.scrollHeight - scrollableParent.scrollTop - scrollableParent.clientHeight < threshold;
+    
+    setIsAtBottom(isNearBottom);
+    if (isNearBottom) {
+      setShowNewMessagesAlert(false);
+    }
+    return isNearBottom;
+  }, [findScrollableParent]);
+
+  // Handle scroll events to check position
   useEffect(() => {
-    if (messagesEndRef.current) {
+    const element = messagesEndRef.current;
+    if (!element) return;
+
+    const scrollableParent = findScrollableParent(element);
+    if (!scrollableParent) return;
+
+    const handleScroll = () => {
+      checkIfAtBottom();
+    };
+
+    scrollableParent.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollableParent.removeEventListener('scroll', handleScroll);
+  }, [findScrollableParent, checkIfAtBottom]);
+
+  // Auto-scroll to bottom only if user is at bottom, otherwise show alert
+  useEffect(() => {
+    const hasNewMessages = messages.length > lastMessageCount;
+    
+    if (hasNewMessages) {
+      const atBottom = checkIfAtBottom();
+      
+      if (atBottom) {
+        // User is at bottom, auto-scroll
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        setShowNewMessagesAlert(false);
+      } else {
+        // User is not at bottom, show alert
+        setShowNewMessagesAlert(true);
+      }
+    }
+    
+    setLastMessageCount(messages.length);
+  }, [messages.length, checkIfAtBottom]);
+
+  // Auto-scroll when typing indicator appears (if user is at bottom)
+  useEffect(() => {
+    if (typingAvatarId && isAtBottom && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-  }, [messages.length, typingAvatarId]);
+  }, [typingAvatarId, isAtBottom]);
+
+  const handleScrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setShowNewMessagesAlert(false);
+    }
+  };
 
   if (messages.length === 0 && !typingAvatarId) {
     return (
@@ -36,30 +118,45 @@ export default function ConversationTimeline({
   const typingAvatar = typingAvatarId ? avatars.find(a => a.id === typingAvatarId) : null;
 
   return (
-    <div className="space-y-4">
-      {messages.map((message, index) => {
-        const avatar = avatars.find(a => a.id === message.avatarId);
-        const isCurrent = currentMessageIndex !== undefined && index === currentMessageIndex;
-        const isUserMessage = message.avatarId === 'user';
+    <div className="relative">
+      <div className="space-y-4">
+        {messages.map((message, index) => {
+          const avatar = avatars.find(a => a.id === message.avatarId);
+          const isCurrent = currentMessageIndex !== undefined && index === currentMessageIndex;
+          const isUserMessage = message.avatarId === 'user';
+          
+          return (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              avatar={avatar}
+              isCurrent={isCurrent}
+              isUserMessage={isUserMessage}
+            />
+          );
+        })}
         
-        return (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            avatar={avatar}
-            isCurrent={isCurrent}
-            isUserMessage={isUserMessage}
-          />
-        );
-      })}
-      
-      {/* Typing Indicator */}
-      {typingAvatar && (
-        <TypingIndicator avatar={typingAvatar} />
+        {/* Typing Indicator */}
+        {typingAvatar && (
+          <TypingIndicator avatar={typingAvatar} />
+        )}
+        
+        {/* Scroll anchor for auto-scrolling */}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* New Messages Alert */}
+      {showNewMessagesAlert && (
+        <div className="sticky bottom-4 left-0 right-0 flex justify-center z-10 pointer-events-none">
+          <button
+            onClick={handleScrollToBottom}
+            className="px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2 pointer-events-auto"
+          >
+            <span>New messages</span>
+            <span>↓</span>
+          </button>
+        </div>
       )}
-      
-      {/* Scroll anchor for auto-scrolling */}
-      <div ref={messagesEndRef} />
     </div>
   );
 }

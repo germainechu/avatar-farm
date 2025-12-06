@@ -1,5 +1,5 @@
 import type { Avatar } from '../types';
-import { MBTI_TYPES } from './mbtiData';
+import { MBTI_TYPES, getSocionicsPositions } from './mbtiData';
 import { deriveBehavior } from './behaviorDerivation';
 
 /**
@@ -10,6 +10,7 @@ export function generateAvatars(): Avatar[] {
 
   for (const [mbtiType, config] of Object.entries(MBTI_TYPES)) {
     const behavior = deriveBehavior(config.functions);
+    const socionicsPositions = getSocionicsPositions(mbtiType);
     
     avatars.push({
       id: mbtiType.toLowerCase(),
@@ -17,7 +18,8 @@ export function generateAvatars(): Avatar[] {
       name: generateAvatarName(mbtiType),
       functions: config.functions,
       behavior,
-      description: config.description
+      description: config.description,
+      socionicsPositions
     });
   }
 

@@ -3,11 +3,13 @@ import AppShell from './components/AppShell';
 import { AvatarGrid } from './features/avatars';
 import { ScenarioBuilder } from './features/scenarios';
 import { SimulationView } from './features/simulation';
+import ChatHistory from './features/simulation/ChatHistory';
 import { generateAvatars } from './lib/avatars';
 import { saveScenario } from './lib/storage';
 import type { Scenario } from './types';
+import type { StoredSimulation } from './lib/storage';
 
-type AppView = 'avatars' | 'scenario-builder' | 'simulation';
+type AppView = 'avatars' | 'scenario-builder' | 'simulation' | 'chat-history';
 
 function App() {
   const avatars = useMemo(() => generateAvatars(), []);
@@ -22,6 +24,11 @@ function App() {
 
   const handleBackToSetup = () => {
     setView('scenario-builder');
+  };
+
+  const handleLoadSimulation = (simulation: StoredSimulation) => {
+    setCurrentScenario(simulation.scenario);
+    setView('simulation');
   };
 
   return (
@@ -48,6 +55,16 @@ function App() {
             }`}
           >
             Create Scenario
+          </button>
+          <button
+            onClick={() => setView('chat-history')}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              view === 'chat-history'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Chat History
           </button>
           {currentScenario && (
             <button
@@ -93,6 +110,13 @@ function App() {
           scenario={currentScenario}
           avatars={avatars}
           onBack={handleBackToSetup}
+        />
+      )}
+
+      {view === 'chat-history' && (
+        <ChatHistory
+          avatars={avatars}
+          onLoadSimulation={handleLoadSimulation}
         />
       )}
     </AppShell>

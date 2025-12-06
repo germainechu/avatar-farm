@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Scenario, Avatar, Message, AvatarPosition } from '../../types';
 import { runSimulation, generatePositions, continueSimulation, interjectAndContinue } from '../../lib/simulationEngine';
+import { saveSimulation } from '../../lib/storage';
 import ConversationTimeline from './ConversationTimeline';
 import SimulationControls from './SimulationControls';
 import SimulationAnalytics from './SimulationAnalytics';
@@ -25,6 +26,8 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
   const [positions, setPositions] = useState<AvatarPosition[]>([]);
   const [isGeneratingPositions, setIsGeneratingPositions] = useState(false);
   const [totalRounds, setTotalRounds] = useState(scenario.rounds);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const participants = avatars.filter(a => scenario.avatarIds.includes(a.id));
   const messagesPerRound = participants.length;
@@ -286,6 +289,27 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
     }
   };
 
+  const handleSave = async () => {
+    if (allMessages.length === 0) {
+      alert('No messages to save');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      await saveSimulation(scenario, allMessages);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Error saving simulation:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -311,6 +335,35 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
             </span>
           </div>
         </div>
+        {!isGenerating && allMessages.length > 0 && (
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                saveStatus === 'success'
+                  ? 'bg-green-600 text-white'
+                  : saveStatus === 'error'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {isSaving
+                ? 'Saving...'
+                : saveStatus === 'success'
+                ? '✓ Saved!'
+                : saveStatus === 'error'
+                ? '✗ Error'
+                : '💾 Save Conversation'}
+            </button>
+            {saveStatus === 'success' && (
+              <p className="text-xs text-green-600">Saved to chat history</p>
+            )}
+            {saveStatus === 'error' && (
+              <p className="text-xs text-red-600">Failed to save</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Loading State */}

@@ -47,6 +47,17 @@ interface GenerateMessageRequest {
     mbtiType: string;
   }>; // All avatars for speaker identification in conversation context
   round: number;
+  physicsState?: {
+    activation: number[]; // [Te, Ti, Fe, Fi, Se, Si, Ne, Ni]
+    baseline: number[]; // [Te, Ti, Fe, Fi, Se, Si, Ne, Ni]
+  };
+  relationships?: Array<{
+    avatarId: string;
+    avatarName: string;
+    affinity: number;
+    tension: number;
+  }>;
+  isFirstMessage?: boolean; // Whether this is the first message in the conversation
 }
 
 interface GenerateMessageResponse {
@@ -80,7 +91,17 @@ export default async function handler(
     }
 
     // Build system prompt from avatar data
-    const systemPrompt = buildSystemPrompt(avatar, scenario, history, avatars, round);
+    const { physicsState, relationships, isFirstMessage } = req.body;
+    const systemPrompt = buildSystemPrompt(
+      avatar,
+      scenario,
+      history,
+      avatars,
+      round,
+      physicsState,
+      relationships,
+      isFirstMessage
+    );
 
     // Call DeepSeek API
     const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -161,20 +182,294 @@ function loadPersonalityPrompt(mbtiType: string): string | null {
 }
 
 /**
+ * Returns the master prompt with cognitive function definitions and cognitive state system
+ * This should be included once per conversation (first message only)
+ */
+function getMasterPrompt(): string {
+  return `COGNITIVE FUNCTION DEFINITIONS:
+These definitions apply to all avatars. Activation levels indicate how strongly each function is currently engaged.
+
+Te (Extraverted Thinking): Systematic, externally-focused logic. Organizes and optimizes external systems through empirical evidence, measurable results, and efficiency. Focuses on "what works" in the real world, system design, and objective effectiveness. When highly activated, you think in terms of structures, processes, and outcomes.
+
+Ti (Introverted Thinking): Internal logical frameworks. Builds precise, internally-consistent systems of thought. Values accuracy, logical precision, and understanding how things work in theory. When highly activated, you analyze systems for internal consistency and logical coherence.
+
+Fe (Extraverted Feeling): Group emotional harmony. Attuned to collective values, social atmosphere, and others' emotional needs. Creates connection and understanding in groups. When highly activated, you prioritize group harmony, social validation, and emotional attunement.
+
+Fi (Introverted Feeling): Personal values and authenticity. Evaluates based on deeply-held individual values, personal meaning, and what feels authentic. When highly activated, you make decisions based on personal ethics, authenticity, and individual values.
+
+Se (Extraverted Sensing): Immediate sensory reality. Engages directly with present-moment experiences, physical details, and immediate opportunities, focusing on what is material and tangible. When highly activated, you focus on what's happening now, concrete details, and taking action.
+
+Si (Introverted Sensing): Past experiences and patterns. Recalls detailed personal experiences, compares present to past, values tradition and what has worked before, focusing on what is material and obvious. When highly activated, you reference past patterns, established methods, and detailed memories.
+
+Ne (Extraverted Intuition): Possibilities and connections. Explores multiple possibilities, novel connections, and potential alternatives. When highly activated, you generate ideas, see patterns, and explore "what if" scenarios.
+
+Ni (Introverted Intuition): Synthesized insights and future implications. Sees underlying meanings, future trajectories, and extrapolate from history, creating singular insights from patterns. When you are highly activated, you are able to see the future and understand the deeper meanings of the past.
+
+COGNITIVE STATE SYSTEM:
+Activation levels (0-1) reflect current mental state:
+- High (0.7+): Function is actively engaged - use it prominently
+- Moderate (0.4-0.7): Function is available - use it naturally  
+- Low (0.0-0.4): Function is less accessible - avoid relying on it
+Activation changes based on topic, social dynamics, and conversation flow.
+
+---
+`;
+
+}
+
+/**
+ * Function order: [Te, Ti, Fe, Fi, Se, Si, Ne, Ni]
+ */
+const FUNCTION_ORDER = ['Te', 'Ti', 'Fe', 'Fi', 'Se', 'Si', 'Ne', 'Ni'] as const;
+
+/**
+ * Function descriptions for natural language formatting
+ */
+const FUNCTION_DESCRIPTIONS: Record<string, string> = {
+  Te: 'systematic logic and optimization',
+  Ti: 'internal logical frameworks',
+  Fe: 'group emotional harmony',
+  Fi: 'personal values and authenticity',
+  Se: 'immediate sensory reality',
+  Si: 'past experiences and patterns',
+  Ne: 'possibilities and connections',
+  Ni: 'synthesized insights and future vision',
+};
+
+/**
+ * Determines if a function has significant deviation from baseline
+ * Uses relative threshold for low baselines (<0.2), absolute threshold (0.15) for others
+ */
+function hasSignificantDeviation(activation: number, baseline: number): boolean {
+  if (baseline < 0.2) {
+    // Relative threshold: 2x baseline
+    return Math.abs(activation - baseline) >= baseline * 2;
+  }
+  // Absolute threshold: 0.15
+  return Math.abs(activation - baseline) >= 0.15;
+}
+
+/**
+ * Formats activation guidance from physics state
+ * Returns empty string if no significant deviations
+ */
+function formatActivationGuidance(
+  activation: number[],
+  baseline: number[],
+  functions: Array<{ code: string; role: string }>
+): string {
+  // Find functions with significant deviations
+  const significantFunctions: Array<{
+    code: string;
+    activation: number;
+    baseline: number;
+    deviation: number;
+    role: string;
+  }> = [];
+
+  for (let i = 0; i < FUNCTION_ORDER.length; i++) {
+    const funcCode = FUNCTION_ORDER[i];
+    const act = activation[i];
+    const base = baseline[i];
+    
+    if (hasSignificantDeviation(act, base)) {
+      const func = functions.find(f => f.code === funcCode);
+      significantFunctions.push({
+        code: funcCode,
+        activation: act,
+        baseline: base,
+        deviation: act - base,
+        role: func?.role || 'unknown',
+      });
+    }
+  }
+
+  // If no significant deviations, return empty
+  if (significantFunctions.length === 0) {
+    return '';
+  }
+
+  // Sort by absolute deviation (most significant first)
+  significantFunctions.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation));
+
+  // Categorize by activation level
+  const high: typeof significantFunctions = [];
+  const moderate: typeof significantFunctions = [];
+  const low: typeof significantFunctions = [];
+
+  for (const func of significantFunctions) {
+    if (func.activation >= 0.7) {
+      high.push(func);
+    } else if (func.activation >= 0.4) {
+      moderate.push(func);
+    } else {
+      low.push(func);
+    }
+  }
+
+  // Build guidance text
+  const parts: string[] = [];
+
+  if (high.length > 0) {
+    const funcList = high
+      .slice(0, 3) // Top 3
+      .map(f => `${f.code} (${f.activation.toFixed(2)})`)
+      .join(', ');
+    const descriptions = high
+      .slice(0, 3)
+      .map(f => FUNCTION_DESCRIPTIONS[f.code])
+      .join(', ');
+    parts.push(`- HIGHLY ACTIVATED: ${funcList} - You're actively using ${descriptions}`);
+  }
+
+  if (moderate.length > 0) {
+    const funcList = moderate
+      .slice(0, 2) // Top 2
+      .map(f => `${f.code} (${f.activation.toFixed(2)})`)
+      .join(', ');
+    const descriptions = moderate
+      .slice(0, 2)
+      .map(f => FUNCTION_DESCRIPTIONS[f.code])
+      .join(', ');
+    parts.push(`- MODERATELY ACTIVATED: ${funcList} - ${descriptions} are accessible`);
+  }
+
+  if (low.length > 0) {
+    const funcList = low
+      .slice(0, 2) // Top 2
+      .map(f => `${f.code} (${f.activation.toFixed(2)})`)
+      .join(', ');
+    const descriptions = low
+      .slice(0, 2)
+      .map(f => FUNCTION_DESCRIPTIONS[f.code])
+      .join(', ');
+    parts.push(`- LOW ACTIVATION: ${funcList} - ${descriptions} are less accessible`);
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Formats relationship guidance from physics state
+ * Only includes significant relationships (affinity >0.7 or <0.3, tension >0.4)
+ */
+function formatRelationshipGuidance(
+  relationships: Array<{
+    avatarId: string;
+    avatarName: string;
+    affinity: number;
+    tension: number;
+  }>
+): string {
+  if (!relationships || relationships.length === 0) {
+    return '';
+  }
+
+  const significant: Array<{
+    name: string;
+    affinity: number;
+    tension: number;
+    type: 'high_affinity' | 'low_affinity' | 'high_tension';
+  }> = [];
+
+  for (const rel of relationships) {
+    if (rel.affinity > 0.7) {
+      significant.push({
+        name: rel.avatarName,
+        affinity: rel.affinity,
+        tension: rel.tension,
+        type: 'high_affinity',
+      });
+    } else if (rel.affinity < 0.3) {
+      significant.push({
+        name: rel.avatarName,
+        affinity: rel.affinity,
+        tension: rel.tension,
+        type: 'low_affinity',
+      });
+    } else if (rel.tension > 0.4) {
+      significant.push({
+        name: rel.avatarName,
+        affinity: rel.affinity,
+        tension: rel.tension,
+        type: 'high_tension',
+      });
+    }
+  }
+
+  if (significant.length === 0) {
+    return '';
+  }
+
+  const parts: string[] = [];
+
+  const highAffinity = significant.filter(s => s.type === 'high_affinity');
+  if (highAffinity.length > 0) {
+    const names = highAffinity.map(s => s.name).join(', ');
+    parts.push(`- Strong alignment with ${names}'s perspective`);
+  }
+
+  const lowAffinity = significant.filter(s => s.type === 'low_affinity');
+  if (lowAffinity.length > 0) {
+    const names = lowAffinity.map(s => s.name).join(', ');
+    parts.push(`- Finding ${names}'s approach challenging`);
+  }
+
+  const highTension = significant.filter(s => s.type === 'high_tension');
+  if (highTension.length > 0) {
+    const names = highTension.map(s => s.name).join(', ');
+    parts.push(`- Tension with ${names} (${highTension[0].tension.toFixed(2)})`);
+  }
+
+  return parts.join('\n');
+}
+
+/**
  * Builds a system prompt that encodes the avatar's MBTI personality
  * Uses custom personality prompts if available, otherwise falls back to default
+ * Includes physics state guidance when available
  */
 function buildSystemPrompt(
   avatar: GenerateMessageRequest['avatar'],
   scenario: GenerateMessageRequest['scenario'],
   history: GenerateMessageRequest['history'],
   avatars: GenerateMessageRequest['avatars'],
-  round: number
+  round: number,
+  physicsState?: GenerateMessageRequest['physicsState'],
+  relationships?: GenerateMessageRequest['relationships'],
+  isFirstMessage?: boolean
 ): string {
   const dominant = avatar.functions.find(f => f.role === 'dominant');
   const auxiliary = avatar.functions.find(f => f.role === 'auxiliary');
   const tertiary = avatar.functions.find(f => f.role === 'tertiary');
   const inferior = avatar.functions.find(f => f.role === 'inferior');
+
+  // Build master prompt (function definitions) - only on first message
+  const masterPrompt = isFirstMessage ? getMasterPrompt() : '';
+
+  // Build physics state guidance if available
+  let physicsGuidance = '';
+  if (physicsState && physicsState.activation && physicsState.baseline) {
+    const activationGuidance = formatActivationGuidance(
+      physicsState.activation,
+      physicsState.baseline,
+      avatar.functions
+    );
+    
+    const relationshipGuidance = relationships
+      ? formatRelationshipGuidance(relationships)
+      : '';
+
+    if (activationGuidance || relationshipGuidance) {
+      physicsGuidance = `\nCOGNITIVE STATE:\n`;
+      if (activationGuidance) {
+        physicsGuidance += activationGuidance + '\n';
+      }
+      if (relationshipGuidance) {
+        physicsGuidance += `\nRELATIONSHIP CONTEXT:\n${relationshipGuidance}\n`;
+      }
+    }
+  }
 
   // Try to load custom personality prompt
   const customPrompt = loadPersonalityPrompt(avatar.mbtiType);
@@ -234,7 +529,7 @@ function buildSystemPrompt(
 
   // If custom prompt exists, use it as the base and enhance with context
   if (customPrompt) {
-    return `You are ${avatar.name}, an ${avatar.mbtiType} personality.
+    return `${masterPrompt}You are ${avatar.name}, an ${avatar.mbtiType} personality.
 
 PERSONALITY PROFILE:
 ${customPrompt}
@@ -245,7 +540,7 @@ CURRENT SITUATION:
 - This is round ${round} of ${scenario.rounds}
 - Your cognitive function stack: ${dominant?.code || 'N/A'} (dominant) → ${auxiliary?.code || 'N/A'} (auxiliary) → ${tertiary?.code || 'N/A'} (tertiary) → ${inferior?.code || 'N/A'} (inferior)
 
-${conversationContext ? `RECENT CONVERSATION (last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
+${physicsGuidance}${conversationContext ? `RECENT CONVERSATION (last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
 
 ${hasUserInterjection ? `IMPORTANT: There is a USER INTERJECTION in the recent conversation. The user has shared their perspective, asked a question, or guided the discussion. You should:
 - Acknowledge and respond to the user's interjection directly
@@ -268,7 +563,7 @@ YOUR TASK:
   }
 
   // Fallback to default prompt if no custom prompt exists
-  const prompt = `You are ${avatar.name}, an ${avatar.mbtiType} personality.
+  const prompt = `${masterPrompt}You are ${avatar.name}, an ${avatar.mbtiType} personality.
 
 CORE IDENTITY:
 - Cognitive Function Stack: ${dominant?.code || 'N/A'} (dominant) → ${auxiliary?.code || 'N/A'} (auxiliary) → ${tertiary?.code || 'N/A'} (tertiary) → ${inferior?.code || 'N/A'} (inferior)
@@ -288,7 +583,7 @@ CURRENT CONTEXT:
 - Interaction Style: ${scenario.style}
 - Round: ${round} of ${scenario.rounds}
 
-${conversationContext ? `RECENT CONVERSATION (sliding window of last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
+${physicsGuidance}${conversationContext ? `RECENT CONVERSATION (sliding window of last ${windowSize} messages):\n${conversationContext}\n` : 'This is the first message in the conversation.\n'}
 
 ${hasUserInterjection ? `IMPORTANT: There is a USER INTERJECTION in the recent conversation. The user has shared their perspective, asked a question, or guided the discussion. You should:
 - Acknowledge and respond to the user's interjection directly

@@ -1,4 +1,5 @@
-import type { Avatar, Scenario, Message, AvatarPosition, CognitiveFunction } from '../types';
+import type { Avatar, Scenario, Message, AvatarPosition, CognitiveFunction, PhysicsState } from '../types';
+import { initializePhysicsState, updatePhysicsStateAfterMessage, logPhysicsState } from './cognitivePhysics';
 
 /**
  * Delay between messages appearing (in milliseconds)
@@ -20,6 +21,7 @@ interface MessageContext {
   history: Message[];
   round: number;
   avatars?: Avatar[]; // Needed for speaker identification in conversation context
+  physicsState?: PhysicsState; // Physics state for the simulation
 }
 
 /**
@@ -83,7 +85,40 @@ async function analyzeCognitiveFunctions(
 async function generateLLMMessage(
   context: MessageContext
 ): Promise<Message> {
-  const { avatar, scenario, history, round, avatars = [] } = context;
+  const { avatar, scenario, history, round, avatars = [], physicsState } = context;
+
+      // Extract physics state for this avatar if available
+      let avatarPhysicsState = null;
+      let relationships = null;
+      if (physicsState) {
+        const avatarState = physicsState.avatarStates.get(avatar.id);
+        if (avatarState) {
+          avatarPhysicsState = {
+            activation: avatarState.activation,
+            baseline: avatarState.baseline,
+          };
+
+          // Get relationships for this avatar
+          const avatarRelationships = physicsState.relationships.get(avatar.id);
+          if (avatarRelationships && avatars) {
+            relationships = Array.from(avatarRelationships.entries())
+              .map(([otherId, rel]) => {
+                const otherAvatar = avatars.find(a => a.id === otherId);
+                return otherAvatar ? {
+                  avatarId: otherId,
+                  avatarName: otherAvatar.name,
+                  affinity: rel.affinity,
+                  tension: rel.tension,
+                } : null;
+              })
+              .filter((r): r is NonNullable<typeof r> => r !== null);
+          }
+        }
+      }
+
+      // Determine if this is the first message in the conversation
+      // First message = no history AND first avatar in first round
+      const isFirstMessage = history.length === 0;
 
   // Call API endpoint - each message triggers a new thread to DeepSeek
   // The API will build the conversation context with a sliding window (last 5 messages)
@@ -109,6 +144,9 @@ async function generateLLMMessage(
         mbtiType: a.mbtiType,
       })),
       round,
+      physicsState: avatarPhysicsState,
+      relationships,
+      isFirstMessage,
     }),
   });
 
@@ -146,6 +184,17 @@ async function generateLLMMessage(
   const activeFunctions = await analyzeCognitiveFunctions(message, avatar, scenario);
   message.activeFunctions = activeFunctions;
 
+  // Update physics state after message generation if available
+  if (physicsState && avatars) {
+    updatePhysicsStateAfterMessage(
+      physicsState,
+      message,
+      scenario.topic,
+      [...history, message],
+      avatars
+    );
+  }
+
   return message;
 }
 
@@ -181,6 +230,9 @@ export async function runSimulation(
     throw new Error('No valid participants for simulation');
   }
 
+  // Initialize physics state for the simulation
+  const physicsState = initializePhysicsState(participants);
+
   // Round-robin turn taking (sequential for proper context)
   for (let round = 1; round <= scenario.rounds; round++) {
     for (const avatar of participants) {
@@ -194,7 +246,8 @@ export async function runSimulation(
         scenario,
         history: messages,
         round,
-        avatars // Pass avatars for speaker identification in context
+        avatars, // Pass avatars for speaker identification in context
+        physicsState, // Pass physics state for prompt integration
       });
       messages.push(message);
       
@@ -215,6 +268,30 @@ export async function runSimulation(
         await new Promise(resolve => setTimeout(resolve, MESSAGE_DISPLAY_DELAY_MS));
       }
     }
+    
+    // Log round completion immediately and synchronously
+    // Verify round numbers match to catch any issues
+    const messagesInRound = messages.filter(m => m.round === round).length;
+    const expectedMessagesInRound = participants.length;
+    const roundVerification = messagesInRound === expectedMessagesInRound ? '✓' : '⚠️';
+    
+    console.log(
+      `${roundVerification} Round ${round} complete - ${messagesInRound}/${expectedMessagesInRound} messages generated | ` +
+      `Total messages: ${messages.length} | Physics Step: ${physicsState.timeStep} | ` +
+      `Timestamp: ${new Date().toISOString()}`
+    );
+    
+    // Log full state summary after each round
+    if (messages.length > 0) {
+      logPhysicsState(physicsState, participants, `Round ${round} complete`);
+    }
+  }
+
+  // Log final state summary
+  if (messages.length > 0) {
+    console.group('🏁 Simulation Complete - Final Physics State');
+    logPhysicsState(physicsState, participants, 'Final state');
+    console.groupEnd();
   }
 
   return messages;
@@ -246,6 +323,33 @@ export async function continueSimulation(
     throw new Error('No valid participants for simulation');
   }
 
+  // Initialize or restore physics state
+  // For continuation, we should ideally restore state from storage, but for now we'll reinitialize
+  // TODO: In Phase 4, we'll persist and restore physics state
+  const physicsState = initializePhysicsState(participants);
+  
+  // Update physics state for existing messages to restore state (disable logging during restoration)
+  for (const msg of existingMessages) {
+    const avatar = participants.find(a => a.id === msg.avatarId);
+    if (avatar) {
+      updatePhysicsStateAfterMessage(
+        physicsState,
+        msg,
+        scenario.topic,
+        existingMessages.slice(0, existingMessages.indexOf(msg) + 1),
+        participants,
+        false // Disable logging during state restoration
+      );
+    }
+  }
+  
+  // Log restored state
+  if (existingMessages.length > 0) {
+    console.group('🔄 Physics State Restored from Existing Messages');
+    logPhysicsState(physicsState, participants, 'State restored');
+    console.groupEnd();
+  }
+
   // Calculate the starting round (next round after existing messages)
   const lastRound = existingMessages.length > 0 
     ? Math.max(...existingMessages.map(m => m.round))
@@ -269,7 +373,8 @@ export async function continueSimulation(
         scenario,
         history: allMessages, // Use all messages (existing + new) for context
         round,
-        avatars
+        avatars,
+        physicsState, // Pass physics state for prompt integration
       });
       
       newMessages.push(message);
@@ -290,6 +395,24 @@ export async function continueSimulation(
       if (!isLastMessage) {
         await new Promise(resolve => setTimeout(resolve, MESSAGE_DISPLAY_DELAY_MS));
       }
+    }
+    
+    // Log round completion immediately and synchronously
+    // Verify round numbers match to catch any issues
+    const messagesInRound = newMessages.filter(m => m.round === round).length;
+    const expectedMessagesInRound = participants.length;
+    const totalMessages = allMessages.length;
+    const roundVerification = messagesInRound === expectedMessagesInRound ? '✓' : '⚠️';
+    
+    console.log(
+      `${roundVerification} Round ${round} complete - ${messagesInRound}/${expectedMessagesInRound} messages generated | ` +
+      `Total messages: ${totalMessages} | Physics Step: ${physicsState.timeStep} | ` +
+      `Timestamp: ${new Date().toISOString()}`
+    );
+    
+    // Log full state summary after each round
+    if (newMessages.length > 0) {
+      logPhysicsState(physicsState, participants, `Round ${round} complete`);
     }
   }
 
@@ -322,6 +445,34 @@ export async function interjectAndContinue(
     throw new Error('No valid participants for simulation');
   }
 
+  // Initialize or restore physics state
+  const physicsState = initializePhysicsState(participants);
+  
+  // Update physics state for existing messages (excluding user interjections, disable logging during restoration)
+  for (const msg of existingMessages) {
+    if (msg.avatarId !== 'user') {
+      const avatar = participants.find(a => a.id === msg.avatarId);
+      if (avatar) {
+        updatePhysicsStateAfterMessage(
+          physicsState,
+          msg,
+          scenario.topic,
+          existingMessages.slice(0, existingMessages.indexOf(msg) + 1),
+          participants,
+          false // Disable logging during state restoration
+        );
+      }
+    }
+  }
+  
+  // Log restored state
+  const existingAvatarMessages = existingMessages.filter(m => m.avatarId !== 'user');
+  if (existingAvatarMessages.length > 0) {
+    console.group('🔄 Physics State Restored from Existing Messages');
+    logPhysicsState(physicsState, participants, 'State restored');
+    console.groupEnd();
+  }
+
   // Find the user interjection (last message with avatarId === 'user')
   const userMessage = existingMessages.filter(m => m.avatarId === 'user').pop();
   const userInterjectionRound = userMessage?.round || 0;
@@ -346,7 +497,8 @@ export async function interjectAndContinue(
         scenario,
         history: allMessages, // Use all messages (including user interjection) for context
         round,
-        avatars
+        avatars,
+        physicsState, // Pass physics state for prompt integration
       });
       
       newMessages.push(message);
@@ -367,6 +519,24 @@ export async function interjectAndContinue(
       if (!isLastMessage) {
         await new Promise(resolve => setTimeout(resolve, MESSAGE_DISPLAY_DELAY_MS));
       }
+    }
+    
+    // Log round completion immediately and synchronously
+    // Verify round numbers match to catch any issues
+    const messagesInRound = newMessages.filter(m => m.round === round).length;
+    const expectedMessagesInRound = participants.length;
+    const totalMessages = allMessages.length;
+    const roundVerification = messagesInRound === expectedMessagesInRound ? '✓' : '⚠️';
+    
+    console.log(
+      `${roundVerification} Round ${round} complete - ${messagesInRound}/${expectedMessagesInRound} messages generated | ` +
+      `Total messages: ${totalMessages} | Physics Step: ${physicsState.timeStep} | ` +
+      `Timestamp: ${new Date().toISOString()}`
+    );
+    
+    // Log full state summary after each round
+    if (newMessages.length > 0) {
+      logPhysicsState(physicsState, participants, `Round ${round} complete`);
     }
   }
 
