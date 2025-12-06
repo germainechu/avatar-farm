@@ -7,9 +7,6 @@ interface AvatarCardProps {
 }
 
 export default function AvatarCard({ avatar, onClick, isSelected = false }: AvatarCardProps) {
-  const dominant = avatar.functions.find(f => f.role === 'dominant');
-  const auxiliary = avatar.functions.find(f => f.role === 'auxiliary');
-
   return (
     <div
       onClick={onClick}

@@ -55,17 +55,10 @@ const SOCIONICS_BASELINES: Record<number, { baseline: number; capacity: number }
 };
 
 /**
- * Valued positions: 1, 2, 5, 6 are valued (+1), others are not valued (-1)
- */
-function isValuedPosition(position: number): boolean {
-  return position === 1 || position === 2 || position === 5 || position === 6;
-}
-
-/**
  * Maps MBTI type to Socionics positions for all 8 functions
  * This uses the standard Socionics Model A positions based on MBTI function stack
  */
-export function mapMBTIToSocionics(mbtiType: string): Record<CognitiveFunction, SocionicsPosition> {
+export function mapMBTIToSocionics(_mbtiType: string): Record<CognitiveFunction, SocionicsPosition> {
   // This function is kept for compatibility but delegates to createSocionicsFromStack
   // The actual mapping is done in createSocionicsFromStack which uses the function stack
   // This is a placeholder - full implementation would use complete MBTI->Socionics lookup
@@ -393,7 +386,7 @@ export function computeSocialForce(
   avatarId: string,
   physicsState: PhysicsState,
   recentMessages: Message[],
-  allAvatars: Avatar[]
+  _allAvatars: Avatar[]
 ): ActivationVector {
   const force: number[] = Array(FUNCTION_ORDER.length).fill(0);
   const { parameters, avatarStates, relationships } = physicsState;
@@ -695,15 +688,12 @@ export function updatePhysicsStateAfterMessage(
   scenarioTopic: string,
   allMessages: Message[],
   allAvatars: Avatar[],
-  enableLogging: boolean = true
+  _enableLogging: boolean = true
 ): void {
   const { avatarStates, parameters } = physicsState;
   const avatarState = avatarStates.get(message.avatarId);
   
   if (!avatarState) return;
-  
-  // Store previous activation for logging
-  const previousActivation = [...avatarState.activation] as ActivationVector;
   
   // Get recent messages for social force computation
   const recentMessages = allMessages.slice(-5); // Last 5 messages
