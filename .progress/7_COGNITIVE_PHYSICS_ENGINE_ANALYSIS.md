@@ -225,8 +225,9 @@ interface ActivationState {
 
 interface RelationshipState {
   avatarPair: [string, string];
-  affinity: number; // -1 to 1
-  tension: number; // 0 to 1
+  affinity: number; // [0, 1] - how much i likes/feels close to j
+  tension: number; // [0, 1] - how much unresolved friction i feels toward j
+  // Constraint: affinity + tension = 1.0 (100%)
 }
 ```
 

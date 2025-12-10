@@ -115,6 +115,7 @@ This maintains LLM quality while ensuring cognitive consistency.
 - Master prompt explains cognitive state system (activation levels 0-1, high/moderate/low thresholds)
 - Individual prompts include physics state only when there are significant deviations (0.15 threshold, relative for low baselines)
 - Relationship guidance only includes significant relationships (affinity >0.7 or <0.3, tension >0.4)
+- **Constraint:** affinity + tension = 1.0 (100%) - values are normalized after each update
 - Token-efficient: Master prompt ~500 tokens once, individual guidance ~100-150 tokens only when needed
 - Physics state is initialized at simulation start and updated after each message
 

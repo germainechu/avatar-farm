@@ -88,7 +88,7 @@ Let's trace ENTP's Se activation through Round 2:
 **Social force from ENTJ:**
 - ENTJ's Se at this point: ~69.7%
 - Deviation from ENTP's baseline: 69.7% - 30% = 39.7%
-- Weight (affinity ~0.5, tension ~0.1): `w = 0.5 * 0.5 - 0.3 * 0.1 = 0.22`
+- Weight (affinity ~0.5, tension ~0.5, summing to 1.0): `w = 0.5 * 0.5 - 0.3 * 0.5 = 0.1`
 - Social contribution: `0.4 * 0.22 * 0.397 = 0.035` (3.5 percentage points)
 
 **Persistence term:**
