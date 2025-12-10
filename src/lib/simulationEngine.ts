@@ -128,16 +128,20 @@ async function generateLLMMessage(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      avatar,
-      scenario,
-      history: history.map(msg => ({
-        id: msg.id,
-        avatarId: msg.avatarId,
-        content: msg.content,
-        tag: msg.tag,
-        round: msg.round,
-      })),
+      body: JSON.stringify({
+        avatar,
+        scenario,
+        history: history.map(msg => ({
+          id: msg.id,
+          avatarId: msg.avatarId,
+          content: msg.content,
+          tag: msg.tag,
+          round: msg.round,
+          image: msg.image ? {
+            url: msg.image.url,
+            moderationStatus: msg.image.moderationStatus,
+          } : undefined,
+        })),
       avatars: avatars.map(a => ({
         id: a.id,
         name: a.name,

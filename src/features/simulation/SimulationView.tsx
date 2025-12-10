@@ -208,8 +208,8 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
     }
   };
 
-  const handleUserInterjection = async (userMessage: string) => {
-    if (!userMessage.trim() || isGenerating) return;
+  const handleUserInterjection = async (userMessage: string, image?: import('../../types').MessageImage) => {
+    if ((!userMessage.trim() && !image) || isGenerating) return;
 
     setIsGenerating(true);
     setGenerationError(null);
@@ -228,9 +228,10 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
         scenarioId: scenario.id,
         avatarId: 'user',
         round: nextRound,
-        content: userMessage,
+        content: userMessage || (image ? '[Image shared]' : ''),
         tag: 'idea', // Default tag for user messages
         createdAt: new Date().toISOString(),
+        image: image,
       };
 
       // Add user message to conversation
@@ -323,6 +324,23 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
           </button>
           <h2 className="text-2xl font-bold text-gray-900">Simulation</h2>
           <p className="text-gray-600 mt-1">{scenario.topic}</p>
+          {scenario.image && (
+            <div className="mt-3">
+              <div className="relative inline-block border border-gray-300 rounded-lg p-2 bg-gray-50 max-w-md">
+                <img
+                  src={scenario.image.url}
+                  alt="Scenario image"
+                  className="max-h-48 max-w-full rounded object-contain"
+                />
+                {scenario.image.moderationStatus === 'approved' && (
+                  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                    ✓ Verified
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Scenario image - avatars will analyze this</p>
+            </div>
+          )}
           <div className="flex gap-2 mt-2">
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
               {scenario.style}
@@ -424,7 +442,7 @@ export default function SimulationView({ scenario, avatars, onBack }: Simulation
             {/* User Interjection */}
             {!isGenerating && allMessages.length > 0 && (
               <UserInterjection
-                onInterject={handleUserInterjection}
+                onInterject={(message, image) => handleUserInterjection(message, image)}
                 isGenerating={isGenerating}
                 disabled={isGenerating}
               />

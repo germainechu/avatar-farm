@@ -7,6 +7,10 @@
     "api/analyze-cognitive-functions.ts": {
       "memory": 1024,
       "maxDuration": 30
+    },
+    "api/moderate-image.ts": {
+      "memory": 512,
+      "maxDuration": 20
     }
   }
 }

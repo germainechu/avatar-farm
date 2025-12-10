@@ -602,7 +602,7 @@ export function updateRelationship(
   const relMap = relationships.get(avatarId1)!;
   
   if (!relMap.has(avatarId2)) {
-    relMap.set(avatarId2, { affinity: 0.5, tension: 0.1 }); // Default initial state
+    relMap.set(avatarId2, { affinity: 0.5, tension: 0.5 }); // Default initial state (sums to 1.0)
   }
   
   const currentRel = relMap.get(avatarId2)!;
@@ -615,14 +615,19 @@ export function updateRelationship(
     parameters.eta_ten * Math.max(0, S) - // Build tension if S > 0 (resistant)
     parameters.rho_ten * Math.max(0, -S);   // Decay tension if S < 0 (supportive)
   
-  const newTension = Math.max(0, Math.min(1, currentRel.tension + tensionChange));
+  const rawTension = Math.max(0, Math.min(1, currentRel.tension + tensionChange));
   
   // Update affinity
   const affinityChange =
     parameters.eta_aff * Math.max(0, -S) - // Build affinity if S < 0 (supportive)
     parameters.rho_aff * Math.max(0, S);    // Decay affinity if S > 0 (resistant)
   
-  const newAffinity = Math.max(0, Math.min(1, currentRel.affinity + affinityChange));
+  const rawAffinity = Math.max(0, Math.min(1, currentRel.affinity + affinityChange));
+  
+  // Normalize so affinity + tension = 1.0 (100%)
+  const sum = rawAffinity + rawTension;
+  const newAffinity = sum > 0 ? rawAffinity / sum : 0.5;
+  const newTension = sum > 0 ? rawTension / sum : 0.5;
   
   return { affinity: newAffinity, tension: newTension };
 }
@@ -658,7 +663,7 @@ export function initializePhysicsState(
       if (otherAvatar.id !== avatar.id) {
         relationships.get(avatar.id)!.set(otherAvatar.id, {
           affinity: 0.5,
-          tension: 0.1,
+          tension: 0.5,
         });
       }
     }

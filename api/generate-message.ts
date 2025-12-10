@@ -33,6 +33,10 @@ interface GenerateMessageRequest {
     style: string;
     avatarIds: string[];
     rounds: number;
+    image?: {
+      url: string;
+      moderationStatus: string;
+    };
   };
   history: Array<{
     id: string;
@@ -40,6 +44,10 @@ interface GenerateMessageRequest {
     content: string;
     tag: string;
     round: number;
+    image?: {
+      url: string;
+      moderationStatus: string;
+    };
   }>;
   avatars: Array<{
     id: string;
@@ -103,6 +111,49 @@ export default async function handler(
       isFirstMessage
     );
 
+    // Check if there's an image in recent messages or scenario that we should analyze
+    const recentImage = history
+      .slice(-10) // Check last 10 messages
+      .find(msg => msg.image && msg.image.moderationStatus === 'approved');
+    
+    const hasMessageImage = !!recentImage;
+    const hasScenarioImage = scenario.image && scenario.image.moderationStatus === 'approved';
+    const hasAnyImage = hasMessageImage || hasScenarioImage;
+    
+    // Build messages array for DeepSeek API
+    const messages: Array<{
+      role: 'system' | 'user' | 'assistant';
+      content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>;
+    }> = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+    ];
+
+    // Build image description if there are images
+    let imageDescription = '';
+    if (hasScenarioImage && hasMessageImage) {
+      imageDescription = `[Note: There are images available in this scenario - one attached to the scenario itself, and one shared by a user in the conversation. You can reference these images if they support a point you want to make, but focus primarily on the discussion topic.]`;
+    } else if (hasScenarioImage) {
+      imageDescription = `[Note: There is an image attached to this scenario. You can reference it if it supports a point you want to make, but focus primarily on the discussion topic.]`;
+    } else if (hasMessageImage) {
+      imageDescription = `[Note: The user has shared an image in the conversation. You can reference it if it supports a point you want to make, but focus primarily on the discussion topic.]`;
+    }
+
+    // If there's an image, include it in the prompt
+    if (hasAnyImage) {
+      messages.push({
+        role: 'user',
+        content: `The group is discussing: "${scenario.topic}"\n\n${imageDescription}\n\nGenerate your response for round ${round}. Keep it concise (1-3 sentences), stay true to your ${avatar.mbtiType} personality, and respond to the question being discussed.${history.length > 0 ? ` Consider the recent conversation context when forming your response.` : ''}`,
+      });
+    } else {
+      messages.push({
+        role: 'user',
+        content: `The group is discussing: "${scenario.topic}"\n\nGenerate your response for round ${round}. Keep it concise (1-3 sentences), stay true to your ${avatar.mbtiType} personality, and respond to the question being discussed.${history.length > 0 ? ` Consider the recent conversation context when forming your response.` : ''}`,
+      });
+    }
+
     // Call DeepSeek API
     const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -112,16 +163,7 @@ export default async function handler(
       },
       body: JSON.stringify({
         model: 'deepseek-chat', // or 'deepseek-coder' for code-focused
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: `The group is discussing: "${scenario.topic}"\n\nGenerate your response for round ${round}. Keep it concise (1-3 sentences), stay true to your ${avatar.mbtiType} personality, and respond to the question being discussed.${history.length > 0 ? ` Consider the recent conversation context when forming your response.` : ''}`,
-          },
-        ],
+        messages: messages,
         temperature: 0.8, // Slightly creative but consistent
         max_tokens: 150, // Keep responses concise
       }),
@@ -211,6 +253,14 @@ Activation levels (0-1) reflect current mental state:
 - Moderate (0.4-0.7): Function is available - use it naturally  
 - Low (0.0-0.4): Function is less accessible - avoid relying on it
 Activation changes based on topic, social dynamics, and conversation flow.
+
+IMAGE CONTEXT:
+Images may be provided in the conversation or attached to the scenario as additional context. When images are present:
+- You are aware of the image content and can reference it when you have a relevant point about it
+- The primary focus of your response should be the discussion topic itself
+- Only mention or analyze the image if it directly relates to a point you want to make
+- Avoid starting every response with "Looking at the image" - reference images naturally when they support your perspective
+- Use your cognitive functions to interpret images from your personality's unique perspective when relevant
 
 ---
 `;
@@ -490,15 +540,20 @@ function buildSystemPrompt(
   const userInterjection = recentMessages.find(msg => msg.avatarId === 'user');
   const hasUserInterjection = !!userInterjection;
 
+  // Check if there's an image attached to the scenario
+  const hasScenarioImage = scenario.image && scenario.image.moderationStatus === 'approved';
+
   const conversationContext = recentMessages.length > 0
     ? recentMessages
         .map(msg => {
           if (msg.avatarId === 'user') {
-            return `[Round ${msg.round}] USER INTERJECTION: "${msg.content}"`;
+            const imageNote = msg.image ? ' [USER SHARED AN IMAGE]' : '';
+            return `[Round ${msg.round}] USER INTERJECTION: "${msg.content}"${imageNote}`;
           }
           const speaker = avatars.find(a => a.id === msg.avatarId);
           const speakerName = speaker?.name || speaker?.mbtiType || 'Unknown';
-          return `[Round ${msg.round}] ${speakerName}: "${msg.content}"`;
+          const imageNote = msg.image ? ' [IMAGE ATTACHED]' : '';
+          return `[Round ${msg.round}] ${speakerName}: "${msg.content}"${imageNote}`;
         })
         .join('\n') + earlierSummary
     : '';
@@ -537,6 +592,7 @@ ${customPrompt}
 CURRENT SITUATION:
 - You are participating in a ${scenario.style} discussion
 - The topic being discussed is: "${scenario.topic}"
+${hasScenarioImage ? '- Note: An image is attached to this scenario as additional context. You can reference it if it supports a point you want to make, but focus primarily on the discussion topic.' : ''}
 - This is round ${round} of ${scenario.rounds}
 - Your cognitive function stack: ${dominant?.code || 'N/A'} (dominant) → ${auxiliary?.code || 'N/A'} (auxiliary) → ${tertiary?.code || 'N/A'} (tertiary) → ${inferior?.code || 'N/A'} (inferior)
 
@@ -555,6 +611,7 @@ YOUR TASK:
 - Stay true to your ${avatar.mbtiType} personality as described above
 - Respond naturally to the topic "${scenario.topic}" from your personality's perspective
 - Engage authentically with the conversation context
+- If images are provided, reference them only when you have a relevant point about them - don't feel obligated to mention images in every response
 - Keep your response concise (1-3 sentences)
 - Let your communication style reflect your personality traits as described in the profile above
 - Reference specific points from the conversation when relevant
@@ -576,6 +633,7 @@ CORE IDENTITY:
 
 THE QUESTION BEING DISCUSSED:
 "${scenario.topic}"
+${hasScenarioImage ? '\n\nNote: An image is attached to this scenario as additional context. You can reference it if it supports a point you want to make, but focus primarily on the discussion topic.' : ''}
 
 This is the central question or topic that the group is discussing. Keep this question in mind as you respond. Your response should be relevant to this question and reflect your personality's perspective on it.
 
@@ -598,6 +656,7 @@ YOUR ROLE:
 - Stay in character as ${avatar.name} (${avatar.mbtiType})
 - Respond to the question "${scenario.topic}" from your personality's perspective
 - Engage with the recent conversation context when relevant
+- If images are provided, reference them only when you have a relevant point about them - don't feel obligated to mention images in every response
 - Keep responses concise (1-3 sentences)
 - Match your communication style parameters
 - Reference specific points from the conversation when relevant

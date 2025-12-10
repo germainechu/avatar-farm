@@ -41,10 +41,28 @@ export interface Scenario {
   rounds: number;
   createdAt: string;
   useLLM?: boolean; // Optional flag to enable LLM-powered message generation
+  image?: MessageImage; // Optional image attached to the scenario
 }
 
 // Message
 export type MessageTag = "support" | "critique" | "idea" | "clarify";
+
+export type ImageModerationStatus = "pending" | "approved" | "rejected" | "error";
+
+export interface MessageImage {
+  url: string; // Base64 data URL or uploaded URL
+  moderationStatus: ImageModerationStatus;
+  moderationResult?: {
+    safe: boolean;
+    categories?: {
+      nudity?: number;
+      violence?: number;
+      weapons?: number;
+      offensive?: number;
+      [key: string]: number | undefined;
+    };
+  };
+}
 
 export interface Message {
   id: string;
@@ -55,6 +73,7 @@ export interface Message {
   tag: MessageTag;
   createdAt: string;
   activeFunctions?: CognitiveFunction[]; // Cognitive functions actively used in this message
+  image?: MessageImage; // Optional image attached to the message
 }
 
 // Avatar Position (concluding statement)
@@ -99,6 +118,7 @@ export type ActivationVector = [
 export interface RelationshipState {
   affinity: number;  // [0, 1] - how much i likes/feels close to j
   tension: number;   // [0, 1] - how much unresolved friction i feels toward j
+  // Constraint: affinity + tension = 1.0 (100%)
 }
 
 // Physics state for a single avatar

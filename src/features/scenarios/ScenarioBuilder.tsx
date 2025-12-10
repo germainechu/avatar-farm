@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { Avatar, InteractionStyle, Scenario } from '../../types';
+import { useState, useRef } from 'react';
+import type { Avatar, InteractionStyle, Scenario, MessageImage } from '../../types';
 
 interface ScenarioBuilderProps {
   avatars: Avatar[];
@@ -12,6 +12,10 @@ export default function ScenarioBuilder({ avatars, onScenarioCreate }: ScenarioB
   const [selectedAvatarIds, setSelectedAvatarIds] = useState<string[]>([]);
   const [rounds, setRounds] = useState(10);
   const [errors, setErrors] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<MessageImage | null>(null);
+  const [isModerating, setIsModerating] = useState(false);
+  const [moderationError, setModerationError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validate = (): boolean => {
     const newErrors: string[] = [];
@@ -50,7 +54,8 @@ export default function ScenarioBuilder({ avatars, onScenarioCreate }: ScenarioB
       avatarIds: selectedAvatarIds,
       rounds,
       createdAt: new Date().toISOString(),
-      useLLM: true // Always use LLM mode
+      useLLM: true, // Always use LLM mode
+      image: selectedImage || undefined,
     };
 
     onScenarioCreate(scenario);
@@ -66,24 +71,196 @@ export default function ScenarioBuilder({ avatars, onScenarioCreate }: ScenarioB
     }
   };
 
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setModerationError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setModerationError('Image size must be less than 10MB');
+      return;
+    }
+
+    setIsModerating(true);
+    setModerationError(null);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Data = event.target?.result as string;
+        
+        if (!base64Data) {
+          setModerationError('Failed to read image');
+          setIsModerating(false);
+          return;
+        }
+
+        // Moderate the image
+        try {
+          const response = await fetch('/api/moderate-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: base64Data }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Moderation service error');
+          }
+
+          const moderationResult = await response.json();
+
+          if (!moderationResult.safe) {
+            setModerationError('Image contains inappropriate content and cannot be uploaded');
+            setIsModerating(false);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+            return;
+          }
+
+          // Image is safe, store it
+          const messageImage: MessageImage = {
+            url: base64Data,
+            moderationStatus: 'approved',
+            moderationResult: {
+              safe: true,
+              categories: moderationResult.categories,
+            },
+          };
+
+          setSelectedImage(messageImage);
+          setModerationError(null);
+        } catch (error) {
+          console.error('Error moderating image:', error);
+          // On error, allow the image but mark as pending
+          const messageImage: MessageImage = {
+            url: base64Data,
+            moderationStatus: 'pending',
+          };
+          setSelectedImage(messageImage);
+          setModerationError('Could not verify image content, but it will be included');
+        } finally {
+          setIsModerating(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setModerationError('Failed to read image file');
+        setIsModerating(false);
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setModerationError('Failed to process image');
+      setIsModerating(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setModerationError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-4">Create Scenario</h2>
       
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Topic Input */}
+        {/* Topic Input with Inline Image Upload */}
         <div>
           <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-2">
             Topic or Question
           </label>
-          <textarea
-            id="topic"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g., Should we prioritize innovation or stability in our product roadmap?"
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
+          <div className="relative">
+            <textarea
+              id="topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., Should we prioritize innovation or stability in our product roadmap?"
+              rows={3}
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+            {/* Inline attachment button */}
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                disabled={isModerating}
+                className="hidden"
+                id="scenario-image-upload"
+              />
+              <label
+                htmlFor="scenario-image-upload"
+                className={`p-1.5 rounded cursor-pointer transition-colors ${
+                  isModerating
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-gray-100'
+                } ${selectedImage ? 'text-blue-600' : 'text-gray-500'}`}
+                title="Attach image"
+              >
+                {isModerating ? (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                )}
+              </label>
+            </div>
+          </div>
+
+          {/* Image Preview */}
+          {selectedImage && (
+            <div className="mt-2 relative border border-gray-300 rounded-md p-2 bg-gray-50">
+              <div className="flex items-start gap-2">
+                <img
+                  src={selectedImage.url}
+                  alt="Scenario preview"
+                  className="max-h-32 max-w-full rounded object-contain"
+                />
+                <div className="flex-1">
+                  {selectedImage.moderationStatus === 'approved' && (
+                    <div className="inline-flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded mb-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Approved
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="block text-xs text-red-600 hover:text-red-800 underline mt-1"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Moderation Error */}
+          {moderationError && (
+            <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+              {moderationError}
+            </div>
+          )}
         </div>
 
         {/* Interaction Style */}

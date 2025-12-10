@@ -209,7 +209,21 @@ function MessageBubble({ message, avatar, isCurrent, isUserMessage = false }: Me
 
         {/* Message Content */}
         <div className="pl-15">
-          <p className="text-gray-700 leading-relaxed font-medium">{formatMarkdown(message.content)}</p>
+          {message.image && (
+            <div className="mb-3">
+              <img
+                src={message.image.url}
+                alt="Shared image"
+                className="max-w-full max-h-64 rounded-lg border border-orange-200 object-contain"
+              />
+              {message.image.moderationStatus === 'approved' && (
+                <p className="text-xs text-green-600 mt-1">✓ Image verified</p>
+              )}
+            </div>
+          )}
+          {message.content && (
+            <p className="text-gray-700 leading-relaxed font-medium">{formatMarkdown(message.content)}</p>
+          )}
         </div>
       </div>
     );
@@ -269,6 +283,18 @@ function MessageBubble({ message, avatar, isCurrent, isUserMessage = false }: Me
 
       {/* Message Content */}
       <div className="pl-15">
+        {message.image && (
+          <div className="mb-3">
+            <img
+              src={message.image.url}
+              alt="Shared image"
+              className="max-w-full max-h-64 rounded-lg border border-gray-200 object-contain"
+            />
+            {message.image.moderationStatus === 'approved' && (
+              <p className="text-xs text-green-600 mt-1">✓ Image verified</p>
+            )}
+          </div>
+        )}
         <p className="text-gray-700 leading-relaxed">{formatMarkdown(message.content)}</p>
       </div>
 
