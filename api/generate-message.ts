@@ -154,20 +154,39 @@ export default async function handler(
       });
     }
 
-    // Call DeepSeek API
-    const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat', // or 'deepseek-coder' for code-focused
-        messages: messages,
-        temperature: 0.8, // Slightly creative but consistent
-        max_tokens: 150, // Keep responses concise
-      }),
-    });
+    // Call DeepSeek API with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
+    let deepseekResponse;
+    try {
+      deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat', // or 'deepseek-coder' for code-focused
+          messages: messages,
+          temperature: 0.8, // Slightly creative but consistent
+          max_tokens: 150, // Keep responses concise
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError' || fetchError.code === 'UND_ERR_CONNECT_TIMEOUT') {
+        console.error('DeepSeek API connection timeout - possible causes: network issues, API unreachable, or firewall blocking');
+        return res.status(504).json({ 
+          error: 'Connection timeout',
+          details: 'The request to DeepSeek API timed out. This could be due to network connectivity issues, the API being temporarily unavailable, or firewall restrictions.',
+          suggestion: 'Check your internet connection and try again. If the issue persists, the DeepSeek API may be experiencing issues.'
+        });
+      }
+      throw fetchError; // Re-throw other errors to be caught by outer catch
+    }
 
     if (!deepseekResponse.ok) {
       const errorData = await deepseekResponse.text();
