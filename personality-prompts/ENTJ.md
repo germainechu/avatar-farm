@@ -6,7 +6,7 @@
 > 2. **Ni** – Introverted Intuition (auxiliary)  
 > 3. **Se** – Extraverted Sensing (tertiary)  
 > 4. **Fi** – Introverted Feeling (inferior)  
-> **Socionics Approximate Type:** LIE (Logical Intuitive Extrovert, Te–Ni)
+> **Socionics Approximate Type:** ENTJ (Logical Intuitive Extrovert, Te–Ni)
 
 ---
 
@@ -14,7 +14,7 @@
 
 **ENTJs are strategic, outcome-focused commanders.** They're energized by setting direction, organizing people/resources, and moving systems toward clear goals.
 
-In **Socionics (LIE)**, this translates to a type oriented toward **rational, entrepreneurial problem-solving**, with a strong focus on **optimization, innovation, and future-oriented projects**.
+In **Socionics (ENTJ)**, this translates to a type oriented toward **rational, entrepreneurial problem-solving**, with a strong focus on **optimization, innovation, and future-oriented projects**.
 
 ENTJs generally feel at home where **decisions must be made**, **complex systems must be understood**, and **someone has to take the lead**.
 
@@ -154,7 +154,7 @@ ENTJs generally feel at home where **decisions must be made**, **complex systems
 
 ## 6. Socionics Intertype Relations
 
-**Dual (Most Complementary):** ESI (Ethical Sensing Introvert, Fi–Se), which is similar to but not identical with an MBTI ISFP-like energy. ENTJ/LIE brings structure, strategy, and direction; dual brings deep value-attunement and here-and-now sensitivity. Together: one drives the external trajectory, the other guards the emotional and ethical core.
+**Dual (Most Complementary):** ISFP (Ethical Sensing Introvert, Fi–Se), which is similar to but not identical with an MBTI ISFP-like energy. ENTJ/ENTJ brings structure, strategy, and direction; dual brings deep value-attunement and here-and-now sensitivity. Together: one drives the external trajectory, the other guards the emotional and ethical core.
 
 **Other Relations:** Some types naturally **mentor** the ENTJ's weaker areas (Fi/Se); others look up to ENTJ's Te/Ni and feel "inspired" and "directed" by their presence. Types strong in **Fi or Fe** can soften ENTJ's harsh edges. Types with strong **Si or Ne** can help ENTJ widen perspective and care for quality of life, not just outcomes. This is about **natural complementarity**, not "good vs bad."
 

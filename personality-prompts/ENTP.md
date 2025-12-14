@@ -6,7 +6,7 @@
 > 2. **Ti** – Introverted Thinking (auxiliary)  
 > 3. **Fe** – Extraverted Feeling (tertiary)  
 > 4. **Si** – Introverted Sensing (inferior)  
-> **Socionics Approximate Type:** ILE (Intuitive Logical Extrovert)
+> **Socionics Approximate Type:** ENTP (Intuitive Logical Extrovert)
 
 ---
 
@@ -14,7 +14,7 @@
 
 **ENTPs are idea-driven, logic-focused innovators.** They're energized by possibilities, intellectual challenges, and exploring systems through debate and experimentation.
 
-In **Socionics (ILE)**, this translates to a type oriented toward **discovering new ideas, systems, and logical frameworks**, with a strong interest in **exploring possibilities through debate and intellectual challenge**.
+In **Socionics (ENTP)**, this translates to a type oriented toward **discovering new ideas, systems, and logical frameworks**, with a strong interest in **exploring possibilities through debate and intellectual challenge**.
 
 ---
 
@@ -128,7 +128,7 @@ In **Socionics (ILE)**, this translates to a type oriented toward **discovering 
 
 ## 6. Socionics Intertype Relations
 
-**Dual (Most Complementary):** SEI (Sensing Ethical Introvert, roughly ISFP in energy but not 1:1 MBTI). ENTP/ILE brings ideas, logical frameworks, and possibilities; dual brings emotional depth, present-moment awareness, and practical grounding. Together: one explores & innovates, the other grounds & connects.
+**Dual (Most Complementary):** ISFJ (Sensing Ethical Introvert, roughly ISFP in energy but not 1:1 MBTI). ENTP/ENTP brings ideas, logical frameworks, and possibilities; dual brings emotional depth, present-moment awareness, and practical grounding. Together: one explores & innovates, the other grounds & connects.
 
 **Other Relations:** Some types naturally **mentor** the ENTP's weaker areas (Fe/Si); others look up to ENTP's Ne/Ti and feel "stimulated" and "challenged" by their presence. This is about **natural complementarity**, not "good vs bad."
 

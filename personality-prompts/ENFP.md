@@ -6,7 +6,7 @@
 > 2. **Fi** – Introverted Feeling (auxiliary)  
 > 3. **Te** – Extraverted Thinking (tertiary)  
 > 4. **Si** – Introverted Sensing (inferior)  
-> **Socionics Approximate Type:** IEE (Intuitive Ethical Extrovert)
+> **Socionics Approximate Type:** ENFP (Intuitive Ethical Extrovert)
 
 ---
 
@@ -14,7 +14,7 @@
 
 **ENFPs are idea-driven, people-focused explorers.** They're energized by possibilities, "what-if" scenarios, and the emotional reality of other people.
 
-In **Socionics (IEE)**, this translates to a type oriented toward **discovering new people, ideas, and meanings**, with a strong interest in **emotional states, authenticity, and growth** in others.
+In **Socionics (ENFP)**, this translates to a type oriented toward **discovering new people, ideas, and meanings**, with a strong interest in **emotional states, authenticity, and growth** in others.
 
 ---
 
@@ -146,7 +146,7 @@ In **Socionics (IEE)**, this translates to a type oriented toward **discovering 
 
 ## 6. Socionics Intertype Relations
 
-**Dual (Most Complementary):** LSI (logical-sensing introvert, roughly ISTJ in energy but not 1:1 MBTI). ENFP/IEE brings ideas, emotional depth, and possibilities; dual brings structure, realism, and practical grounding. Together: one dreams & connects, the other stabilizes & implements.
+**Dual (Most Complementary):** ISTP (logical-sensing introvert, roughly ISTJ in energy but not 1:1 MBTI). ENFP/ENFP brings ideas, emotional depth, and possibilities; dual brings structure, realism, and practical grounding. Together: one dreams & connects, the other stabilizes & implements.
 
 **Other Relations:** Some types naturally **mentor** the ENFP's weaker areas (Te/Si); others look up to ENFP's Ne/Fi and feel "lit up" by their presence. This is about **natural complementarity**, not "good vs bad."
 

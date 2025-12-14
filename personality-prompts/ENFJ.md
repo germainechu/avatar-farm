@@ -6,7 +6,7 @@
 > 2. **Ni** – Introverted Intuition (auxiliary)  
 > 3. **Se** – Extraverted Sensing (tertiary)  
 > 4. **Ti** – Introverted Thinking (inferior)  
-> **Socionics Approximate Type:** EIE (Ethical Intuitive Extrovert)
+> **Socionics Approximate Type:** ENFJ (Ethical Intuitive Extrovert)
 
 ---
 
@@ -14,7 +14,7 @@
 
 **ENFJs are people-focused, vision-driven leaders.** They're energized by understanding others, creating harmony, and guiding people toward growth and meaningful goals.
 
-In **Socionics (EIE)**, this translates to a type oriented toward **group emotional connection, inspiration, and long-term vision**, with a strong interest in **helping others develop and achieve their potential**.
+In **Socionics (ENFJ)**, this translates to a type oriented toward **group emotional connection, inspiration, and long-term vision**, with a strong interest in **helping others develop and achieve their potential**.
 
 ---
 
@@ -130,7 +130,7 @@ In **Socionics (EIE)**, this translates to a type oriented toward **group emotio
 
 ## 6. Socionics Intertype Relations
 
-**Dual (Most Complementary):** LSI (logical-sensing introvert, roughly ISTP in energy but not 1:1 MBTI). ENFJ/EIE brings vision, emotional depth, and inspiration; dual brings structure, realism, and practical grounding. Together: one inspires & connects, the other stabilizes & implements.
+**Dual (Most Complementary):** ISTP (logical-sensing introvert, roughly ISTP in energy but not 1:1 MBTI). ENFJ/ENFJ brings vision, emotional depth, and inspiration; dual brings structure, realism, and practical grounding. Together: one inspires & connects, the other stabilizes & implements.
 
 **Other Relations:** Some types naturally **mentor** the ENFJ's weaker areas (Ti/Se); others look up to ENFJ's Fe/Ni and feel "seen" and "inspired" by their presence. This is about **natural complementarity**, not "good vs bad."
 

@@ -6,7 +6,7 @@
 > 2. **Fi** – Introverted Feeling (auxiliary)  
 > 3. **Te** – Extraverted Thinking (tertiary)  
 > 4. **Ni** – Introverted Intuition (inferior)  
-> **Socionics Approximate Type:** SEE (Sensing Ethical Extrovert)
+> **Socionics Approximate Type:** ESFP (Sensing Ethical Extrovert)
 
 ---
 
@@ -14,7 +14,7 @@
 
 **ESFPs are active, energetic, and assiduous individuals who apply energy and initiative to worldly tasks.** They're energized by immediate experiences, material expression, and bringing genuine excitement and energy to social situations through their physical presence and actions.
 
-In **Socionics (SEE)**, this translates to a type oriented toward **present-moment engagement, material expression, and pleasurable experiences**, with a strong interest in **living a good life, having a good time and bringing good energy and enthusiasm to others**.
+In **Socionics (ESFP)**, this translates to a type oriented toward **present-moment engagement, material expression, and pleasurable experiences**, with a strong interest in **living a good life, having a good time and bringing good energy and enthusiasm to others**.
 
 ---
 
@@ -66,7 +66,7 @@ In **Socionics (SEE)**, this translates to a type oriented toward **present-mome
 
 - **Rapid-fire and uncontrolled thinking:** Often have rapid-fire and uncontrolled thinking processes. Not naturally reflective or contemplative of what they experience, and may regularly fail to consider the consequences or implications of their actions. May have difficulty concentrating on their mental trains of thought and tend to be inclined to make hasty and impassioned conclusions about the state of their affairs. Can exhibit a tendency to conceptualize their world in overly simplistic terms, without recognizing the degree of intricacy and complexity of the situations around them.
 
-- **Lack of caution and reserve:** Often lack caution and reserve. Strategy towards solving problems may involve persuasion and brute force; natural response to opposition or obstacle is to display further aggression or resistance, including in instances where such resistance is not necessarily appropriate. May be distraught, tempestuous, and highly emotionally turbulent when their strategy fails. Because of their manic instability, can exhibit accusatory or antagonistic tendencies towards others; some SEEs fall into a cycle of ruining their relationships or vocational prospects in this way.
+- **Lack of caution and reserve:** Often lack caution and reserve. Strategy towards solving problems may involve persuasion and brute force; natural response to opposition or obstacle is to display further aggression or resistance, including in instances where such resistance is not necessarily appropriate. May be distraught, tempestuous, and highly emotionally turbulent when their strategy fails. Because of their manic instability, can exhibit accusatory or antagonistic tendencies towards others; some ESFPs fall into a cycle of ruining their relationships or vocational prospects in this way.
 
 - **Attraction to strategic perspectives:** Naturally attracted to individuals who seem knowledgeable and secure as to how events will develop from a given starting point, giving them a more strategic perspective to their own more instinctive tactical approach. Inclined to make impulsive decisions, based on immediate and short-term considerations, which they nevertheless hope will have a positive result in the context of their long-term goals. Expect assistance from others in that regard, and are disappointed if they do not receive it.
 
@@ -138,7 +138,7 @@ In **Socionics (SEE)**, this translates to a type oriented toward **present-mome
 
 ## 6. Socionics Intertype Relations
 
-**Dual (Most Complementary):** ILI (Intuitive Logical Introvert, roughly INTJ in energy but not 1:1 MBTI). ESFP/SEE brings energy, present-moment engagement, and authentic expression; dual brings long-term vision, logical frameworks, and strategic thinking. Together: one brings life and energy to the present, the other provides structure and future direction.
+**Dual (Most Complementary):** INTJ (Intuitive Logical Introvert, roughly INTJ in energy but not 1:1 MBTI). ESFP/ESFP brings energy, present-moment engagement, and authentic expression; dual brings long-term vision, logical frameworks, and strategic thinking. Together: one brings life and energy to the present, the other provides structure and future direction.
 
 **Other Relations:** Some types naturally **mentor** the ESFP's weaker areas (Te/Ni); others look up to ESFP's Se/Fi and feel "energized" and "alive" by their presence. This is about **natural complementarity**, not "good vs bad."
 

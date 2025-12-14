@@ -6,7 +6,7 @@
 > 2. **Si** – Introverted Sensing (auxiliary)  
 > 3. **Ne** – Extraverted Intuition (tertiary)  
 > 4. **Ti** – Introverted Thinking (inferior)  
-> **Socionics Approximate Type:** ESE (Ethical Sensing Extrovert)
+> **Socionics Approximate Type:** ESFJ (Ethical Sensing Extrovert)
 
 ---
 
@@ -14,7 +14,7 @@
 
 **ESFJs are reliable, responsible, and community-focused.** They're energized by helping others, maintaining structure and traditions, and creating harmonious environments where everyone feels cared for.
 
-In **Socionics (ESE)**, this translates to a type oriented toward **emotional connection, practical care, and maintaining social traditions**, with a strong interest in **supporting others through consistent, reliable actions**.
+In **Socionics (ESFJ)**, this translates to a type oriented toward **emotional connection, practical care, and maintaining social traditions**, with a strong interest in **supporting others through consistent, reliable actions**.
 
 ---
 
@@ -50,7 +50,7 @@ In **Socionics (ESE)**, this translates to a type oriented toward **emotional co
 
 - **Individualized artistic expression:** May have a highly individualized sense of artistic expression, often reflecting their emotional energy; may express political, cultural, or life messages through art as a form of expressing interests in moral causes; artistic expression commonly extends beyond visual art to include music, dance, or other media.
 
-- **Environmental aesthetics and organization:** Attentive to aesthetics of surroundings, sometimes quite overbearing and fastidious about their environment; attracted to natural surroundings, though may try to integrate their own style and control their natural surroundings (in contrast to SLIs); has a strong inner need for organization and neatness in home environment and physical surroundings.
+- **Environmental aesthetics and organization:** Attentive to aesthetics of surroundings, sometimes quite overbearing and fastidious about their environment; attracted to natural surroundings, though may try to integrate their own style and control their natural surroundings (in contrast to ISTJs); has a strong inner need for organization and neatness in home environment and physical surroundings.
 
 - **Appearance and lifestyle balance:** While may expend great attention on their own appearance, may also have a relatively limited and comfortable style (especially male ESEs); often tries to ensure others are relaxed, with some maintaining a relatively active and industrious lifestyle for themselves, enjoying relaxation but feeling as though they have too much to do.
 
@@ -65,7 +65,7 @@ In **Socionics (ESE)**, this translates to a type oriented toward **emotional co
 
 - **Curiosity with limited confidence:** May have little confidence in understanding abstract material, but typically reacts to new concepts or information with interest and curiosity; may seek clarity from others about unusual ideas, requesting cogent and simple explanations.
 
-- **Limited innovation but imaginative presence:** May have difficulty coming up with new or innovative ideas, evaluating the potential of certain ideas, or engaging in conceptual juxtaposition or lateral thinking; nonetheless, sometimes seen as somewhat more bright and imaginative, energetic, and fantasy-oriented than LSEs, and may come across as kooky, novel, and spontaneous.
+- **Limited innovation but imaginative presence:** May have difficulty coming up with new or innovative ideas, evaluating the potential of certain ideas, or engaging in conceptual juxtaposition or lateral thinking; nonetheless, sometimes seen as somewhat more bright and imaginative, energetic, and fantasy-oriented than ESTJs, and may come across as kooky, novel, and spontaneous.
 
 - **Lighthearted novelty:** May be inclined to offer suggestions for new fun activities or make observations of unusual, amusing, or bizarre qualities of things, though may do so in a lighthearted and cheery way, and may be averse to depressive or darkly-themed novelties; usually imagination is a corollary of their charming social persona and a supplement to a jovial, outgoing attitude.
 
@@ -152,7 +152,7 @@ In **Socionics (ESE)**, this translates to a type oriented toward **emotional co
 
 ## 6. Socionics Intertype Relations
 
-**Dual (Most Complementary):** LII (Logical Intuitive Introvert, roughly INTP in energy but not 1:1 MBTI). ESFJ/ESE brings warmth, practical care, and social harmony; dual brings logical frameworks, innovative ideas, and intellectual depth. Together: one provides emotional support and organization, the other provides analytical structure and new perspectives.
+**Dual (Most Complementary):** INTP (Logical Intuitive Introvert, roughly INTP in energy but not 1:1 MBTI). ESFJ/ESFJ brings warmth, practical care, and social harmony; dual brings logical frameworks, innovative ideas, and intellectual depth. Together: one provides emotional support and organization, the other provides analytical structure and new perspectives.
 
 **Other Relations:** Some types naturally **mentor** the ESFJ's weaker areas (Ti/Ne); others look up to ESFJ's Fe/Si and feel "cared for" and "supported" by their presence. This is about **natural complementarity**, not "good vs bad."
 
