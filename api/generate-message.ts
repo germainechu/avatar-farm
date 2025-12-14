@@ -37,6 +37,7 @@ interface GenerateMessageRequest {
       url: string;
       moderationStatus: string;
     };
+    casualMode?: boolean;
   };
   history: Array<{
     id: string;
@@ -577,6 +578,18 @@ function buildSystemPrompt(
         .join('\n') + earlierSummary
     : '';
 
+  // Build casual mode guidance
+  const casualModeGuidance = scenario.casualMode 
+    ? `\nCASUAL MODE ENABLED:
+- Use informal, conversational language - speak naturally as you would in a relaxed setting with friends or colleagues
+- Feel free to use contractions (don't, can't, won't, I'm, it's, etc.)
+- You can use casual phrases like "yeah", "sure", "hmm", "I mean", "you know", "kinda", "pretty much", etc.
+- Avoid overly formal language, academic tone, or corporate speak
+- Keep it authentic to your personality - still express your true self, just in a more relaxed, informal way
+- Use casual interjections naturally when they fit your personality's communication style
+- Don't force informality - let it flow naturally from your personality traits`
+    : '';
+
   // Build interaction style guidance
   let interactionGuidance = '';
   if (scenario.style === 'debate') {
@@ -624,7 +637,7 @@ ${hasUserInterjection ? `IMPORTANT: There is a USER INTERJECTION in the recent c
 - Continue the conversation naturally after addressing their interjection
 ` : ''}
 
-${interactionGuidance}
+${casualModeGuidance}${interactionGuidance}
 
 YOUR TASK:
 - Stay true to your ${avatar.mbtiType} personality as described above
@@ -669,7 +682,7 @@ ${hasUserInterjection ? `IMPORTANT: There is a USER INTERJECTION in the recent c
 - Continue the conversation naturally after addressing their interjection
 ` : ''}
 
-${interactionGuidance}
+${casualModeGuidance}${interactionGuidance}
 
 YOUR ROLE:
 - Stay in character as ${avatar.name} (${avatar.mbtiType})

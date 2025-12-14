@@ -42,6 +42,7 @@ export interface Scenario {
   createdAt: string;
   useLLM?: boolean; // Optional flag to enable LLM-powered message generation
   image?: MessageImage; // Optional image attached to the scenario
+  casualMode?: boolean; // Optional flag to enable casual/informal language
 }
 
 // Message

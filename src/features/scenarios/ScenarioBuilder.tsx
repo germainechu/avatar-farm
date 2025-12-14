@@ -11,6 +11,7 @@ export default function ScenarioBuilder({ avatars, onScenarioCreate }: ScenarioB
   const [style, setStyle] = useState<InteractionStyle>('brainstorm');
   const [selectedAvatarIds, setSelectedAvatarIds] = useState<string[]>([]);
   const [rounds, setRounds] = useState(10);
+  const [casualMode, setCasualMode] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<MessageImage | null>(null);
   const [isModerating, setIsModerating] = useState(false);
@@ -32,8 +33,8 @@ export default function ScenarioBuilder({ avatars, onScenarioCreate }: ScenarioB
       newErrors.push('Select at most 8 avatars');
     }
 
-    if (rounds < 4 || rounds > 40) {
-      newErrors.push('Rounds must be between 4 and 40');
+    if (rounds < 1 || rounds > 10) {
+      newErrors.push('Rounds must be between 1 and 10');
     }
 
     setErrors(newErrors);
@@ -56,6 +57,7 @@ export default function ScenarioBuilder({ avatars, onScenarioCreate }: ScenarioB
       createdAt: new Date().toISOString(),
       useLLM: true, // Always use LLM mode
       image: selectedImage || undefined,
+      casualMode: casualMode || undefined,
     };
 
     onScenarioCreate(scenario);
@@ -335,16 +337,33 @@ export default function ScenarioBuilder({ avatars, onScenarioCreate }: ScenarioB
           <input
             id="rounds"
             type="range"
-            min="4"
-            max="40"
+            min="1"
+            max="10"
             value={rounds}
             onChange={(e) => setRounds(Number(e.target.value))}
             className="w-full"
           />
           <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>4 (Quick)</span>
-            <span>40 (Deep)</span>
+            <span>1 (Quick)</span>
+            <span>10 (Deep)</span>
           </div>
+        </div>
+
+        {/* Casual Mode Toggle */}
+        <div className="flex items-center gap-3">
+          <input
+            id="casualMode"
+            type="checkbox"
+            checked={casualMode}
+            onChange={(e) => setCasualMode(e.target.checked)}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label htmlFor="casualMode" className="text-sm font-medium text-gray-700">
+            Casual Mode
+          </label>
+          <p className="text-xs text-gray-500">
+            Use informal, conversational language instead of formal speech
+          </p>
         </div>
 
 
